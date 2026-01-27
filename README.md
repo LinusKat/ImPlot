@@ -35,36 +35,50 @@ If you are using an external code editor through a tool such as Rojo, I recommen
 
 ```lua
 local RunService = game:GetService("RunService")
-local Memory = require("@self/Memory")
 local Iris = require("@self/Iris")
 
-local PIDMemory = Memory.new(2400)
+local function Sample(SampleCount: number, Step: number, f: (x: number) -> number): {[number]: Vector2}
+	local packed = {}
+	for x = 1, SampleCount, Step do
+		table.insert(packed, Vector2.new(x, f(x)))
+	end
+	return packed
+end
 
-local function PIDUpdate()
-    local pid_plots = Iris.State({})
+local SinPacked = Sample(100, .01, math.sin)
+local CosPacked = Sample(100, .01, math.cos)
+
+Iris.Init()
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.sizeClear)
+Iris:Connect(function()
     local show_context = Iris.State(true)
+	local plots = Iris.State({})
 
-	-- PID Updates
-
-    pid_plots:set{{
-        Data = PIDMemory.Memory,
-        Name = "PID Force",
+    plots:set{{
+        Data = SinPacked,
+        Name = "Sin",
         GraphStyle = {
             Color = Color3.new(1, 0, 0),
             Thickness = 1,
         },
+    }, {
+        Data = CosPacked,
+        Name = "Cos",
+        GraphStyle = {
+            Color = Color3.new(0, 0, 1),
+            Thickness = 1,
+        },
     }}
 
-    Iris.Window({"Live PID Graph"}); do
+    Iris.Window({"Graph"}); do
         Iris.ImPlotGraph({
-            "PID Force",
-            { X = "t", Y = "Force", XScale = 1, YScale = .4 }},
-            {plots = pid_plots, showDataInformation = show_context}
+            "Sin / Cos",
+            { X = "x", Y = "y", XScale = 1, YScale = .8 }},
+            {plots = plots, showDataInformation = show_context}
         )
     end; Iris.End()
-end
+end)
 
-RunService.Heartbeat:Connect(PIDUpdate)
 ```
 
 ### Pie Charts
@@ -82,12 +96,17 @@ local EuropeanPizzaPreference = {
 	{Value = 64, Color = Color3.fromRGB(0, 191, 255), Name = "New York Pizza"},
 }
 
-Iris.Window({"Pie Chart"}); do
-    local show_pie_chart_data = Iris.State(true) -- this will show whether the data of the pie chart is shown.
-    Iris.Checkbox({"Show Pie Chart Data"}, {isChecked = show_pie_chart_data})
+Iris.Init()
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.sizeClear)
 
-	Iris.ImPlotPieChart({EuropeanPizzaPreference}, {showPieData = show_pie_chart_data})
-end; Iris.End()
+Iris:Connect(function()
+	Iris.Window({"Pie Chart"}); do
+		local show_pie_chart_data = Iris.State(true) -- this will show whether the data of the pie chart is shown.
+		Iris.Checkbox({"Show Pie Chart Data"}, {isChecked = show_pie_chart_data})
+
+		Iris.ImPlotPieChart({EuropeanPizzaPreference}, {showPieData = show_pie_chart_data})
+	end; Iris.End()
+end)
 ```
 
 ### Scatter Charts
@@ -113,17 +132,22 @@ for i = 1, 50 do
 	)
 end
 
-local scatter_plot_state = Iris.State({})
+Iris.Init()
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.sizeClear)
 
-scatter_plot_state:set({ScatterPlot})
+Iris:Connect(function()
+	local scatter_plot_state = Iris.State({})
 
-Iris.Window({"Scatter Chart"}); do
-	Iris.ImPlotGraph({
-		"Scatter Plot",
-		{X = "X", Y = "Y", XScale = .9, YScale = .9}},
-		{plots = scatter_plot_state}
-	)
-end; Iris.End()
+	scatter_plot_state:set({ScatterPlot})
+
+	Iris.Window({"Scatter Chart"}); do
+		Iris.ImPlotGraph({
+			"Scatter Plot",
+			{X = "X", Y = "Y", XScale = .9, YScale = .9}},
+			{plots = scatter_plot_state}
+		)
+	end; Iris.End()
+end)
 ```
 
 ## API
