@@ -21,9 +21,7 @@ This is a widget addon, using the open source project [Iris](https://github.com/
 
 ### Pre-installed
 
-Download the RBXM/ZIP from [releases](https://github.com/LinusKat/ImPlot/releases).
-
-Or alternatively get the model from [ROBLOX Store](https://create.roblox.com/store/asset/76636929685786)!
+Download the Iris RBXM/ZIP from [releases](https://github.com/LinusKat/ImPlot/releases).
 
 ### Manual
 
