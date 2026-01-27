@@ -1,4 +1,4 @@
-# <span align="left">ImPlot</span> <a><img align="right" src="/public/download.svg" /></a>
+# <span align="left">ImPlot</span> <a href="https://github.com/LinusKat/ImPlot/releases/download/V1/ImPlotExampleWindow.rbxm"><img align="right" src="/public/download.svg" /></a>
 
 This is a widget addon, using the open source project [Iris](https://github.com/SirMallard/Iris).
 
@@ -21,7 +21,9 @@ This is a widget addon, using the open source project [Iris](https://github.com/
 
 ### Pre-installed
 
-Download the RBXM from https://github.com/LinusKat/ImPlot/releases
+Download the RBXM/ZIP from [releases](https://github.com/LinusKat/ImPlot/releases).
+
+Or alternatively get the model from [ROBLOX Store](https://create.roblox.com/store/asset/76636929685786)!
 
 ### Manual
 
