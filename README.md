@@ -1,4 +1,4 @@
-# <span align="left">ImPlot for Iris</span> <a href="https://github.com/LinusKat/ImPlot/releases/download/V1/ImPlotExampleWindow.rbxm"><img align="right" src="/public/download.svg" /></a>
+# <span align="left">ImPlot for Iris</span> <a href="https://github.com/LinusKat/ImPlot/releases/"><img align="right" src="/public/download.svg" /></a>
 
 This is a graphing widget addon based off [ImPlot](https://github.com/epezent/implot), using the open source project [Iris](https://github.com/SirMallard/Iris).
 
