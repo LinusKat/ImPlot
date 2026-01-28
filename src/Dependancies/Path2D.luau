@@ -6,8 +6,6 @@
 	Class to make "infinite" Linear Path2Ds,
 	tangents and positions along curve not taken into consideration.
 ]]
-local ceil = math.ceil
-
 local table_insert = table.insert
 local table_clear = table.clear
 local table_clone = table.clone
