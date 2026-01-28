@@ -34,7 +34,7 @@ If you are using an external code editor through a tool such as Rojo, I recommen
 ### Graphs
 
 ```lua
-local RunService = game:GetService("RunService")
+--!strict
 local Iris = require("@self/Iris")
 
 local function Sample(SampleCount: number, Step: number, f: (x: number) -> number): {[number]: Vector2}
@@ -54,23 +54,25 @@ Iris:Connect(function()
     local show_context = Iris.State(true)
 	local plots = Iris.State({})
 
-    plots:set{{
-        Data = SinPacked,
-        Name = "Sin",
-        GraphStyle = {
-            Color = Color3.new(1, 0, 0),
-            Thickness = 1,
-        },
-    }, {
-        Data = CosPacked,
-        Name = "Cos",
-        GraphStyle = {
-            Color = Color3.new(0, 0, 1),
-            Thickness = 1,
-        },
-    }}
+	Iris.Window({"Graph"}); do
+		Iris.Checkbox({"Show Context"}, {isChecked = show_context})
 
-    Iris.Window({"Graph"}); do
+		plots:set{{
+			Data = SinPacked,
+			Name = "Sin",
+			GraphStyle = {
+				Color = Color3.new(1, 0, 0),
+				Thickness = 1,
+			},
+		}, {
+			Data = CosPacked,
+			Name = "Cos",
+			GraphStyle = {
+				Color = Color3.new(0, 0, 1),
+				Thickness = 1,
+			},
+		}}
+
         Iris.ImPlotGraph({
             "Sin / Cos",
             { X = "x", Y = "y", XScale = 1, YScale = .8 }},
@@ -84,6 +86,7 @@ end)
 ### Pie Charts
 
 ```lua
+--!strict
 local Iris = require("@self/Iris")
 
 local EuropeanPizzaPreference = {
@@ -112,6 +115,7 @@ end)
 ### Scatter Charts
 
 ```lua
+--!strict
 local Iris = require("@self/Iris")
 
 local ScatterPlot = {

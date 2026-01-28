@@ -4,7 +4,6 @@ local Util = require("../Util")
 
 local table_clear = table.clear
 local table_insert = table.insert
-local huge = math.huge
 local min = math.min
 local max = math.max
 
@@ -73,7 +72,7 @@ local Chart = {}
 Chart.__index = Chart
 
 function Chart.new()
-	local self = setmetatable({}, Chart) :: self
+	local self = setmetatable({}:: self, Chart)
 	self._chart_data = {}
 	self._paths = {}
 
@@ -98,15 +97,15 @@ function Chart.new()
 end
 
 function Chart._calculate_range(self: self)
-	local range_x = 0
-	local max_x = -huge
-	local min_x = huge
+	local range_x = 2
+	local max_x = 1
+	local min_x = -1
 
-	local range_y = 0
-	local max_y = -huge
-	local min_y = huge
+	local range_y = 2
+	local max_y = 1
+	local min_y = -1
 
-	for _, plot: Plot in self._chart_data do
+	for _, plot: Plot in ipairs(self._chart_data) do
 		for _, marker: Vector2 in ipairs(plot.Data) do
 			max_x = max(max_x, marker.X)
 			min_x = min(min_x, marker.X)
