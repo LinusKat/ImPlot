@@ -1,6 +1,6 @@
-# <span align="left">ImPlot</span> <a href="https://github.com/LinusKat/ImPlot/releases/download/V1/ImPlotExampleWindow.rbxm"><img align="right" src="/public/download.svg" /></a>
+# <span align="left">ImPlot for Iris</span> <a href="https://github.com/LinusKat/ImPlot/releases/download/V1/ImPlotExampleWindow.rbxm"><img align="right" src="/public/download.svg" /></a>
 
-This is a widget addon, using the open source project [Iris](https://github.com/SirMallard/Iris).
+This is a graphing widget addon based off [ImPlot](https://github.com/epezent/implot), using the open source project [Iris](https://github.com/SirMallard/Iris).
 
 <div align="center">
     <table>
@@ -219,3 +219,4 @@ function ImPlotPieChart(
 - ImPlot Documentation - [@vijarsan](https://github.com/vijarsan)
 - [Iris](https://github.com/SirMallard/Iris) - Maintained by [@SirMallad](https://github.com/SirMallard)
 - [Maid](https://github.com/Quenty/NevermoreEngine/blob/main/src/maid/src/Shared/Maid.lua) - Maid by [Quenty](https://github.com/Quenty)
+- Based off [ImPlot](https://github.com/epezent/implot)
