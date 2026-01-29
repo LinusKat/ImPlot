@@ -2,13 +2,14 @@
 	<Meta name="ExplicitAutoJoints">true</Meta>
 	<External>null</External>
 	<External>nil</External>
-	<Item class="LocalScript" referent="RBX4AA95FCE7C0742D4950E85F3A3876703">
+	<Item class="LocalScript" referent="RBXD2C7FF42083940E589A2F93AF74F3DEA">
 		<Properties>
 			<ProtectedString name="Source"><![CDATA[local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 
+local PIDControllerVector3 = require("./ImPlot Example Window/PIDController/PIDWrappers/Vector3")
 local PIDController = require("@self/PIDController")
 local Memory = require("@self/Memory")
 local Iris = require("@self/Iris")
@@ -19,16 +20,25 @@ local Character = Client.Character or Client.CharacterAdded:Wait()
 local SimulationMemory = Memory.new(240)
 local RenderMemory = Memory.new(240)
 
-local PID = PIDController.new(100, .001, 0)
-local PIDMemory = Memory.new(2400)
+local BallSpeedHold = Workspace:WaitForChild("BallSpeedHold")
+
+local SpeedHoldPID = PIDController.new(100, .001, 0)
+local SpeedHoldPIDMemory = Memory.new(2400)
 
 local TargetVelocity = 5
 local Axis = Vector3.zAxis
 local NudgeVelocity = 250
 
-local FrameCount = 0
+local BallFollow = Workspace:WaitForChild("BallFollow")
 
-local Ball = Workspace:WaitForChild("Ball")
+local FollowPID = PIDControllerVector3.new(1000, .001, 100)
+local FollowPIDMemory = {
+	X = Memory.new(2400),
+	Y = Memory.new(2400),
+	Z = Memory.new(2400)
+}
+
+local FrameCount = 0
 
 local EuropeanPizzaPreference = {
 	{Value = 97, Color = Color3.fromRGB(255, 99, 71), Name = "Neapolitan Pizza"},
@@ -59,17 +69,27 @@ local ScatterPlot = {
 	},
 }
 
-local function UpdatePID(dt: number)
-	local velocity = Ball.AssemblyLinearVelocity:Dot(Axis)
-	local force = PID:Update(TargetVelocity, velocity, dt)
+local function UpdateSpeedHoldPID(dt: number)
+	local velocity = BallSpeedHold.AssemblyLinearVelocity:Dot(Axis)
+	local force = SpeedHoldPID:Update(TargetVelocity, velocity, dt)
 	
-	Ball.VectorForce.Force = Axis * force
-	PIDMemory:Feed(Vector2.new(FrameCount, force))
+	BallSpeedHold.VectorForce.Force = Axis * force
+	SpeedHoldPIDMemory:Feed(Vector2.new(FrameCount, force))
+end
+
+local function UpdateFollowPID(dt: number)
+	local force = FollowPID:Update(Character.HumanoidRootPart.Position, BallFollow.Position, dt)
+	BallFollow.VectorForce.Force = force
+	
+	FollowPIDMemory.X:Feed(Vector2.new(FrameCount, force.X))
+	FollowPIDMemory.Y:Feed(Vector2.new(FrameCount, force.Y))
+	FollowPIDMemory.Z:Feed(Vector2.new(FrameCount, force.Z))
 end
 
 local function ImPlotDemoWindow()
 	local performance_plots = Iris.State({})
-	local pid_plots = Iris.State({})
+	local speed_hold_pid_plots = Iris.State({})
+	local ball_follow_pid_plots = Iris.State({})
 	
 	local show_context = Iris.State(true)
 	
@@ -108,20 +128,47 @@ local function ImPlotDemoWindow()
 				Iris.ImPlotGraph({ "Performance", { X = "t", Y = "ms", XScale = 1, YScale = .4 } }, { plots = performance_plots, showDataInformation = show_context })
 			end; Iris.End()
 			
-			Iris.Tree{"PID Graphs"}; do
+			Iris.Tree{"Speed Hold PID"}; do
 				if Iris.Button{"Nudge Ball"}.clicked() then
-					Ball:ApplyImpulse(-Axis * NudgeVelocity)
+					BallSpeedHold:ApplyImpulse(-Axis * NudgeVelocity)
 				end
 
-				pid_plots:set{{
-					Data = PIDMemory.Memory,
+				speed_hold_pid_plots:set{{
+					Data = SpeedHoldPIDMemory.Memory,
 					Name = "PID Force",
 					GraphStyle = {
 						Color = Color3.new(1, 0, 0),
 						Thickness = 1,
 					},
 				}}
-				Iris.ImPlotGraph({ "PID Force", { X = "t", Y = "Force", XScale = 1, YScale = .4 } }, { plots = pid_plots, showDataInformation = show_context })
+				Iris.ImPlotGraph({ "Speed Hold PID Force", { X = "t", Y = "Force", XScale = 1, YScale = .8 } }, { plots = speed_hold_pid_plots, showDataInformation = show_context })
+			end; Iris.End()
+			
+			Iris.Tree{"Follow PID"}; do
+				ball_follow_pid_plots:set{{
+					Data = FollowPIDMemory.X.Memory,
+					Name = "X",
+					GraphStyle = {
+						Color = Color3.new(1, 0, 0),
+						Thickness = 1,
+					},
+				}, {
+					Data = FollowPIDMemory.Y.Memory,
+					Name = "Y",
+					GraphStyle = {
+						Color = Color3.new(0, 1, 0),
+						Thickness = 1,
+					},
+				}, {
+					Data = FollowPIDMemory.Z.Memory,
+					Name = "Z",
+					GraphStyle = {
+						Color = Color3.new(0, 0, 1),
+						Thickness = 1,
+					},
+				}}
+				
+				Iris.ImPlotGraph({ "Follow PID Force", { X = "t", Y = "Force", XScale = 1, YScale = .8 } }, { plots = ball_follow_pid_plots, showDataInformation = show_context })
 			end; Iris.End()
 		end; Iris.End()
 		
@@ -171,7 +218,8 @@ local function ImPlotDemoWindow()
 end
 
 local function Update(dt: number)
-	UpdatePID(dt)
+	UpdateSpeedHoldPID(dt)
+	UpdateFollowPID(dt)
 	ImPlotDemoWindow()
 end
 
@@ -189,7 +237,7 @@ local function Init()
 	if not Iris.Internal._started then
 		Iris.Init()
 	end
-
+	
 	local RNG = Random.new(os.clock())
 	for i = 1, 50 do
 		table.insert(ScatterPlot.Data, Vector2.new(RNG:NextInteger(-100, 100), RNG:NextInteger(0, 50)))
@@ -215,7 +263,7 @@ Init()]]></ProtectedString>
 			<int64 name="SourceAssetId">-1</int64>
 			<BinaryString name="Tags"></BinaryString>
 		</Properties>
-		<Item class="ModuleScript" referent="RBX145CED57BCE449969C345859E001A74F">
+		<Item class="ModuleScript" referent="RBX49F86AC9DF044A2190DFE174AEFA60B6">
 			<Properties>
 				<Content name="LinkedSource"><null></null></Content>
 				<ProtectedString name="Source"><![CDATA[--!strict
@@ -261,839 +309,7 @@ return Memory]]></ProtectedString>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
 		</Item>
-		<Item class="ModuleScript" referent="RBXBB62F27EC5DC485EBD29807F53B24436">
-			<Properties>
-				<Content name="LinkedSource"><null></null></Content>
-				<ProtectedString name="Source"><![CDATA[--!strict
-type self = {
-	Gains: {
-		Kp: number,
-		Ki: number,
-		Kd: number,
-	},
-	Bounds: {
-		Min: number,
-		Max: number,
-	},
-	
-	_IntegratorOn: boolean,
-	_Integral: number,
-	_PreviousError: number,
-}
-
-local INVALID_GAINS_ERR = "Need 3 gains: P, I, D"
-
-local PID = {}
-PID.__index = PID
-
-export type PIDArgsVararg = (number | number | number | number | number)
-export type PIDController = typeof(setmetatable( {}:: self, PID ))
-export type Compound = {[number]: PIDController}
-
---[[
-	@public
-	@function new(Kp: number, Ki: number, Kd: number, min: number, max: number): PIDController
-	Creates a new PIDController
-	
-	@returns PIDController
-]]
-function PID.new(Kp: number, Ki: number, Kd: number, min: number|nil, max: number|nil): PIDController
-	assert(Kp and Ki and Kd, INVALID_GAINS_ERR)
-	
-	return setmetatable({
-		Gains = {
-			Kp = Kp;
-			Ki = Ki;
-			Kd = Kd;
-		};
-		Bounds = {
-			Min = min or -math.huge;
-			Max = max or math.huge;
-		};
-		
-		_IntegratorOn = true;
-		_Integral = 0;
-		_PreviousError = 0;
-	}:: self, PID)
-end
-
---[[
-	@public
-	@function Compound(amount: number, ...: PIDArgsVararg): Compound
-	Creates an array of size amount where v is a PIDController
-	
-	@returns Compound
-]]
-function PID.Compound(amount: number, ...: PIDArgsVararg): Compound
-	local compound = {}
-	for _ = 1, amount do
-		table.insert(compound, PID.new(...))
-	end
-	return compound
-end
-
---[[
-	@public
-	@function IsPIDController(v: PIDController | any): boolean
-	Compares metatable to PID to determine if v is a PIDController
-	
-	@returns boolean
-]]
-function PID.IsPIDController(v: PIDController | any): boolean
-	return typeof(v) == "table" and getmetatable(v) == PID
-end
-
---[[
-	@public
-	@function IsCompound(v: Compound | any): boolean
-	Goes thru PID compound (Assumed to be an array) table and checks if each value is a PIDController
-	
-	@returns boolean
-]]
-function PID.IsCompound(v: Compound | any): boolean
-	if typeof(v) ~= "table" then
-		return false
-	end
-
-	for _, v: PIDController | any in ipairs(v) do
-		if PID.IsPIDController(v) then continue end
-		return false
-	end
-	
-	return true
-end
-
---[[
-	@public
-	@function Update(SetPoint: number, ProcessValue, dt: number): number
-	Updates PID and returns output value
-	
-	@returns number
-]]
-function PID:Update(SetPoint: number, ProcessValue: number, dt: number): number
-	local self = self:: PIDController
-
-	local error = SetPoint - ProcessValue
-
-	local pOut = self.Gains.Kp * error
-
-	local iOut = 0
-	if self._IntegratorOn then
-		self._Integral += error * dt
-		iOut = self.Gains.Ki * self._Integral
-	end
-
-	local dOut = self.Gains.Kd * (error - self._PreviousError) / dt
-
-	local rawOutput = pOut + iOut + dOut
-	local output = math.clamp(rawOutput, self.Bounds.Min, self.Bounds.Max)
-
-	self._IntegratorOn = 
-		not (rawOutput ~= output and math.sign(rawOutput) == math.sign(error))
-
-	self._PreviousError = error
-	return output
-end
-
---[[
-	@public
-	@function Reset()
-	Resets PID state
-]]
-function PID:Reset()
-	self._IntegratorOn = true
-	self._Integral = 0
-	self._PreviousError = 0
-end
-
---[[
-	@public
-	@function Destroy()
-	Clears PID table
-]]
-function PID:Destroy()
-	table.clear(self)
-end
-
-return PID]]></ProtectedString>
-				<string name="ScriptGuid">{482B84D2-58FF-4672-BAB1-9525564C261D}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<string name="Name">PIDController</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<BinaryString name="Tags"></BinaryString>
-			</Properties>
-			<Item class="Folder" referent="RBX445FCCA24497432BBEEB7ABAEB0A6BD8">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">Util</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-				<Item class="ModuleScript" referent="RBX360EF604DEB14634BE5FC2AF3422AD28">
-					<Properties>
-						<Content name="LinkedSource"><null></null></Content>
-						<ProtectedString name="Source"><![CDATA[--!strict
-local PIDController = require(script.Parent.Parent)
-local Maid = require(script.Parent.Maid)
-
-type PIDArgsVararg = PIDController.PIDArgsVararg
-type Compound = PIDController.Compound
-
-type self = {
-	_maid: any,
-	Compound: Compound,
-	
-	new: (...PIDArgsVararg) -> PIDWrapper,
-	IsVector3Compound: (v: Compound | any) -> boolean,
-	IsVector3PIDWrapper: (v: Compound | any) -> boolean,
-	Update: (self: PIDWrapper, SetPoint: Vector3, ProcessValue: Vector3, dt: number) -> Vector3,
-	Destroy: (self: PIDWrapper) -> nil,
-}
-
-local PIDWrapper = {}
-PIDWrapper.__index = PIDWrapper
-
-export type PIDWrapper = typeof(setmetatable( {}:: self, PIDWrapper ))
-
---[[
-	@public
-	@function new(...:PIDArgsVararg): PIDWrapper
-	Creates a new PIDWrapper for Vector3 usage, 
-	PIDArgsVararg is all arguments for a PIDController: Kp, Ki, Kd, min, max
-	
-	@returns PIDWrapper
-]]
-function PIDWrapper.new(...: PIDArgsVararg): PIDWrapper
-	local self = setmetatable({}:: self, PIDWrapper)
-	
-	self._maid = Maid.new()
-	self.Compound = PIDController.Compound(3, ...)
-	
-	for _, PIDController in ipairs(self.Compound) do
-		self._maid:GiveTask(PIDController)
-	end
-	
-	return self
-end
-
---[[
-	@public
-	@function IsVector3Compound(v: Compound | any)
-	checks if v is a compound and whether the array size is 3
-	
-	@returns boolean
-]]
-function PIDWrapper.IsVector3Compound(v: Compound | any)
-	local isCompound = PIDController.IsCompound(v)
-	if not isCompound then
-		return false
-	end
-	return isCompound and #v == 3
-end
-
---[[
-	@public
-	@function IsVector3PIDWrapper(v: PIDWrapper | any)
-	Compares metatable to PIDWrapper to determine if v is a Vector3 PIDWrapper
-	
-	@returns boolean
-]]
-function PIDWrapper.IsVector3PIDWrapper(v: PIDWrapper | any)
-	return typeof(v) == "table" and getmetatable(v) == PIDWrapper
-end
-
---[[
-	@public
-	@function Update(SetPoint: Vector3, ProcessValue: Vector3, dt: number): Vector3
-	Updates every PIDController in the compound of 3 for their respective axis
-	
-	@returns Vector3
-]]
-function PIDWrapper:Update(SetPoint: Vector3, ProcessValue: Vector3, dt: number): Vector3
-	local Compound = self.Compound:: Compound
-	return Vector3.new(
-		Compound[1]:Update(SetPoint.X, ProcessValue.X, dt),
-		Compound[2]:Update(SetPoint.Y, ProcessValue.Y, dt),
-		Compound[3]:Update(SetPoint.Z, ProcessValue.Z, dt)
-	)
-end
-
---[[
-	@public
-	@function Destroy()
-	Clears PIDWrapper table
-]]
-function PIDWrapper:Destroy()
-	self._maid:DoCleaning()
-	table.clear(self)
-end
-
-return PIDWrapper]]></ProtectedString>
-						<string name="ScriptGuid">{82AF049A-4933-49ED-AC21-B0D166BCA979}</string>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Vector3</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-				<Item class="ModuleScript" referent="RBX4D76211FEF7649A8B3495AB6F1D5D7AA">
-					<Properties>
-						<Content name="LinkedSource"><null></null></Content>
-						<ProtectedString name="Source"><![CDATA[--!strict
-local PIDController = require(script.Parent.Parent)
-local Maid = require(script.Parent.Maid)
-
-type PIDArgsVararg = PIDController.PIDArgsVararg
-type Compound = PIDController.Compound
-
-type self = {
-	_maid: any,
-	Compound: Compound,
-
-	new: (...PIDArgsVararg) -> PIDWrapper,
-	IsVector2Compound: (v: Compound | any) -> boolean,
-	IsVector2PIDWrapper: (v: Compound | any) -> boolean,
-	Update: (self: PIDWrapper, SetPoint: Vector2, ProcessValue: Vector2, dt: number) -> Vector2,
-	Destroy: (self: PIDWrapper) -> nil,
-}
-
-local PIDWrapper = {}
-PIDWrapper.__index = PIDWrapper
-
-export type PIDWrapper = typeof(setmetatable( {}:: self, PIDWrapper ))
-
---[[
-	@public
-	@function new(...:PIDArgsVararg): PIDWrapper
-	Creates a new PIDWrapper for Vector2 usage, 
-	PIDArgsVararg is all arguments for a PIDController: Kp, Ki, Kd, min, max
-	
-	@returns PIDWrapper
-]]
-function PIDWrapper.new(...: PIDArgsVararg): PIDWrapper
-	local self = setmetatable({}:: self, PIDWrapper)
-
-	self._maid = Maid.new()
-	self.Compound = PIDController.Compound(2, ...)
-
-	for _, PIDController in ipairs(self.Compound) do
-		self._maid:GiveTask(PIDController)
-	end
-
-	return self
-end
-
---[[
-	@public
-	@function IsVector2Compound(v: Compound | any)
-	checks if v is a compound and whether the array size is 2
-	
-	@returns boolean
-]]
-function PIDWrapper.IsVector2Compound(v: Compound | any)
-	local isCompound = PIDController.IsCompound(v)
-	if not isCompound then
-		return false
-	end
-	return isCompound and #v == 2
-end
-
---[[
-	@public
-	@function IsVector2PIDWrapper(v: PIDWrapper | any)
-	Compares metatable to PIDWrapper to determine if v is a Vector2 PIDWrapper
-	
-	@returns boolean
-]]
-function PIDWrapper.IsVector2PIDWrapper(v: PIDWrapper | any)
-	return typeof(v) == "table" and getmetatable(v) == PIDWrapper
-end
-
---[[
-	@public
-	@function Update(SetPoint: Vector3, ProcessValue: Vector3, dt: number): Vector2
-	Updates every PIDController in the compound of 2 for their respective axis
-	
-	@returns Vector2
-]]
-function PIDWrapper:Update(SetPoint: Vector2, ProcessValue: Vector2, dt: number): Vector2
-	local Compound = self.Compound:: Compound
-	return Vector2.new(
-		Compound[1]:Update(SetPoint.X, ProcessValue.X, dt),
-		Compound[2]:Update(SetPoint.Y, ProcessValue.Y, dt)
-	)
-end
-
---[[
-	@public
-	@function Destroy()
-	Clears PIDWrapper table
-]]
-function PIDWrapper:Destroy()
-	self._maid:DoCleaning()
-	table.clear(self)
-end
-
-return PIDWrapper]]></ProtectedString>
-						<string name="ScriptGuid">{6C9C71FB-8874-400B-83B6-3DC95A90EAA7}</string>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Vector2</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-				<Item class="ModuleScript" referent="RBX220B0B171CA64A429FC18F3055AD05D5">
-					<Properties>
-						<Content name="LinkedSource"><null></null></Content>
-						<ProtectedString name="Source"><![CDATA[--!strict
-local Workspace = game:GetService("Workspace")
-
-local PIDController = require(script.Parent.Parent)
-local Vec3 = require(script.Parent.Vector3)
-local Vec2 = require(script.Parent.Vector2)
-
-type Vec3PIDWrapper = Vec3.PIDWrapper
-type Vec2PIDWrapper = Vec2.PIDWrapper
-type PIDController = PIDController.PIDController
-type Compound = PIDController.Compound
-
-type AcceptedUnionValue = PIDController
-						| Compound
-						| Vec3PIDWrapper
-						| Vec2PIDWrapper
-
-type self = {
-	Folder: Folder,
-	
-	new: (UnionValue: AcceptedUnionValue, name: string, parent: Instance | nil) -> Tuner,
-	ValidateValue: (UnionValue: AcceptedUnionValue) -> boolean,
-	
-	_bindPIDController: (self: Tuner, PIDController: PIDController) -> nil,
-	_iterate: (self: Tuner, UnionValue: AcceptedUnionValue) -> nil,
-	
-	Destroy: (self: Tuner) -> nil,
-}
-
-local INVALID_VALUE_ERR = "v is not a PIDController, PIDCompound, Vector3PIDWrapper or Vector2PIDWrapper"
-
-local Tuner = {}
-Tuner.__index = Tuner
-
-export type Tuner = typeof(setmetatable( {}:: self, Tuner ))
-
---[[
-	@public
-	@function new(UnionValue: AcceptedUnionValue, name: string, parent: Instance | nil): Tuner
-	Creates a new Tuner Folder with attributes for gains and bounds in the given parent or Workspace
-	
-	@returns Tuner
-]]
-function Tuner.new(UnionValue: AcceptedUnionValue, name: string, parent: Instance | nil): Tuner
-	assert(Tuner.ValidateValue(UnionValue), INVALID_VALUE_ERR)
-	local self = setmetatable({}:: self, Tuner)
-	
-	self.Folder = Instance.new("Folder")
-	self.Folder.Parent = parent or Workspace
-	self.Folder.Name = name
-	
-	self:_iterate(UnionValue)
-	
-	return self
-end
-
---[[
-	@public
-	@function ValidateValue(UnionValue: AcceptedUnionValue): boolean
-	Validates UnionValue with 4 accepted types:
-		PIDController
-		Compound
-		Vec3PIDWrapper
-		Vec2PIDWrapper
-	
-	@returns boolean
-]]
-function Tuner.ValidateValue(UnionValue: AcceptedUnionValue): boolean
-	return PIDController.IsPIDController(UnionValue)
-		or PIDController.IsCompound(UnionValue)
-		or Vec3.IsVector3PIDWrapper(UnionValue)
-		or Vec2.IsVector2PIDWrapper(UnionValue)
-end
-
---[[
-	@public
-	@function _bindPIDController(PIDController: PIDController)
-	Binds PID Controller to tuner folder with attributes for gains and bounds
-]]
-function Tuner:_bindPIDController(PIDController: PIDController)
-	local folder = self.Folder
-	
-	for key: string, v: number in pairs(PIDController.Gains) do
-		folder:SetAttribute(key, v)
-		folder:GetAttributeChangedSignal(key):Connect(function()
-			PIDController.Gains[key] = folder:GetAttribute(key)
-		end)
-	end
-	
-	for key: string, v: number in pairs(PIDController.Bounds) do
-		folder:SetAttribute(key, v)
-		folder:GetAttributeChangedSignal(key):Connect(function()
-			PIDController.Gains[key] = folder:GetAttribute(key)
-		end)
-	end
-end
-
---[[
-	@public
-	@function _iterate(UnionValue: AcceptedUnionValue)
-	Recursive loop thru UnionValue until PID Controller is found
-]]
-function Tuner:_iterate(UnionValue: AcceptedUnionValue)
-	if PIDController.IsPIDController(UnionValue) then
-		self:_bindPIDController(UnionValue)
-	elseif Vec3.IsVector3PIDWrapper(UnionValue) or Vec2.IsVector2PIDWrapper(UnionValue) then
-		self:_iterate(UnionValue.Compound)
-	elseif PIDController.IsCompound(UnionValue) then
-		for _, PID: PIDController in ipairs(UnionValue:: Compound) do
-			self:_iterate(PID)
-		end
-	end
-end
-
---[[
-	@public
-	@function Destroy()
-	Clears Tuner table and destroys folder if it still exists
-]]
-function Tuner:Destroy()
-	if self.Folder then
-		self.Folder:Destroy()
-	end
-	
-	table.clear(self)
-end
-
-return Tuner]]></ProtectedString>
-						<string name="ScriptGuid">{D063447C-BC58-4975-8768-59F5C0D91C69}</string>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Tuner</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-				<Item class="ModuleScript" referent="RBX194978E21F514D84BAF1CD354C27F1EE">
-					<Properties>
-						<Content name="LinkedSource"><null></null></Content>
-						<ProtectedString name="Source"><![CDATA[--[=[
-	Manages the cleaning of events and other things. Useful for
-	encapsulating state and make deconstructors easy.
-
-	See the [Five Powerful Code Patterns talk](https://developer.roblox.com/en-us/videos/5-powerful-code-patterns-behind-top-roblox-games)
-	for a more in-depth look at Maids in top games.
-
-	```lua
-	local maid = Maid.new()
-
-	maid:GiveTask(function()
-		print("Cleaning up")
-	end)
-
-	maid:GiveTask(workspace.ChildAdded:Connect(print))
-
-	-- Disconnects all events, and executes all functions
-	maid:DoCleaning()
-	```
-
-	@class Maid
-]=]
--- luacheck: pop
-
-local Maid = {}
-Maid.ClassName = "Maid"
-
---[=[
-	Constructs a new Maid object
-
-	```lua
-	local maid = Maid.new()
-	```
-
-	@return Maid
-]=]
-function Maid.new()
-	return setmetatable({
-		_tasks = {}
-	}, Maid)
-end
-
---[=[
-	Returns true if the class is a maid, and false otherwise.
-
-	```lua
-	print(Maid.isMaid(Maid.new())) --> true
-	print(Maid.isMaid(nil)) --> false
-	```
-
-	@param value any
-	@return boolean
-]=]
-function Maid.isMaid(value)
-	return type(value) == "table" and value.ClassName == "Maid"
-end
-
---[=[
-	Returns Maid[key] if not part of Maid metatable
-
-	```lua
-	local maid = Maid.new()
-	maid._current = Instance.new("Part")
-	print(maid._current) --> Part
-
-	maid._current = nil
-	print(maid._current) --> nil
-	```
-
-	@param index any
-	@return MaidTask
-]=]
-function Maid:__index(index)
-	if Maid[index] then
-		return Maid[index]
-	else
-		return self._tasks[index]
-	end
-end
-
---[=[
-	Add a task to clean up. Tasks given to a maid will be cleaned when
-	maid[index] is set to a different value.
-
-	Task cleanup is such that if the task is an event, it is disconnected.
-	If it is an object, it is destroyed.
-
-	```
-	Maid[key] = (function)         Adds a task to perform
-	Maid[key] = (event connection) Manages an event connection
-	Maid[key] = (thread)           Manages a thread
-	Maid[key] = (Maid)             Maids can act as an event connection, allowing a Maid to have other maids to clean up.
-	Maid[key] = (Object)           Maids can cleanup objects with a `Destroy` method
-	Maid[key] = nil                Removes a named task.
-	```
-
-	@param index any
-	@param newTask MaidTask
-]=]
-function Maid:__newindex(index, newTask)
-	if Maid[index] ~= nil then
-		error(string.format("Cannot use '%s' as a Maid key", tostring(index)), 2)
-	end
-
-	local tasks = self._tasks
-	local job = tasks[index]
-
-	if job == newTask then
-		return
-	end
-
-	tasks[index] = newTask
-
-	if job then
-		local jobType = typeof(job)
-		if jobType == "function" then
-			job()
-		elseif jobType == "table" then
-			if type(job.Destroy) == "function" then
-				job:Destroy()
-			end
-		elseif jobType == "Instance" then
-			job:Destroy()
-		elseif jobType == "thread" then
-			local cancelled
-			if coroutine.running() ~= job then
-				cancelled = pcall(function()
-					task.cancel(job)
-				end)
-			end
-
-			if not cancelled then
-				task.defer(function()
-					task.cancel(job)
-				end)
-			end
-		elseif jobType == "RBXScriptConnection" then
-			job:Disconnect()
-		end
-	end
-end
-
---[=[
-	Gives a task to the maid for cleanup and returns the resulting value
-
-	@param task MaidTask -- An item to clean
-	@return MaidTask
-]=]
-function Maid:Add(task)
-	if not task then
-		error("Task cannot be false or nil", 2)
-	end
-
-	self[#self._tasks+1] = task
-
-	if type(task) == "table" and (not task.Destroy) then
-		warn("[Maid.Add] - Gave table task without .Destroy\n\n" .. debug.traceback())
-	end
-
-	return task
-end
-
---[=[
-	Gives a task to the maid for cleanup, but uses an incremented number as a key.
-
-	@param task MaidTask -- An item to clean
-	@return number -- taskId
-]=]
-function Maid:GiveTask(task)
-	if not task then
-		error("Task cannot be false or nil", 2)
-	end
-
-	local taskId = #self._tasks+1
-	self[taskId] = task
-
-	if type(task) == "table" and (not task.Destroy) then
-		warn("[Maid.GiveTask] - Gave table task without .Destroy\n\n" .. debug.traceback())
-	end
-
-	return taskId
-end
-
---[=[
-	Gives a promise to the maid for clean.
-
-	@param promise Promise<T>
-	@return Promise<T>
-]=]
-function Maid:GivePromise(promise)
-	if not promise:IsPending() then
-		return promise
-	end
-
-	local newPromise = promise.resolved(promise)
-	local id = self:GiveTask(newPromise)
-
-	-- Ensure GC
-	newPromise:Finally(function()
-		self[id] = nil
-	end)
-
-	return newPromise
-end
-
---[=[
-	Cleans up all tasks and removes them as entries from the Maid.
-
-	:::note
-	Signals that are already connected are always disconnected first. After that
-	any signals added during a cleaning phase will be disconnected at random times.
-	:::
-
-	:::tip
-	DoCleaning() may be recursively invoked. This allows the you to ensure that
-	tasks or other tasks. Each task will be executed once.
-
-	However, adding tasks while cleaning is not generally a good idea, as if you add a
-	function that adds itself, this will loop indefinitely.
-	:::
-]=]
-function Maid:DoCleaning()
-	local tasks = self._tasks
-
-	-- Disconnect all events first as we know this is safe
-	for index, job in pairs(tasks) do
-		if typeof(job) == "RBXScriptConnection" then
-			tasks[index] = nil
-			job:Disconnect()
-		end
-	end
-
-	-- Clear out tasks table completely, even if clean up tasks add more tasks to the maid
-	local index, job = next(tasks)
-	while job ~= nil do
-		tasks[index] = nil
-		local jobType = typeof(job)
-		if jobType == "function" then
-			job()
-		elseif jobType == "table" and type(job.Destroy) == "function" then
-			job:Destroy()
-		elseif jobType == "Instance" then
-			job:Destroy()
-		elseif jobType == "thread" then
-			local cancelled
-			if coroutine.running() ~= job then
-				cancelled = pcall(function()
-					task.cancel(job)
-				end)
-			end
-
-			if not cancelled then
-				local toCancel = job
-				task.defer(function()
-					task.cancel(toCancel)
-				end)
-			end
-		elseif jobType == "RBXScriptConnection" then
-			job:Disconnect()
-		end
-		index, job = next(tasks)
-	end
-end
-
---[=[
-	Alias for [Maid.DoCleaning()](/api/Maid#DoCleaning)
-
-	@function Destroy
-	@within Maid
-]=]
-Maid.Destroy = Maid.DoCleaning
-
-return Maid]]></ProtectedString>
-						<string name="ScriptGuid">{C14CAA8A-8F7E-4A02-BB77-A904601A7004}</string>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<string name="Name">Maid</string>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-					</Properties>
-				</Item>
-			</Item>
-			<Item class="PackageLink" referent="RBXDFD14FEF2E104E19AC311296D159F309">
-				<Properties>
-					<bool name="AutoUpdate">false</bool>
-					<string name="DefaultName"></string>
-					<int name="ModifiedState">-1</int>
-					<Content name="PackageIdSerialize"><url>rbxassetid://88952555353290</url></Content>
-					<BinaryString name="SerializedDefaultAttributes"></BinaryString>
-					<int64 name="VersionIdSerialize">2</int64>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<string name="Name">PackageLink</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<BinaryString name="Tags"></BinaryString>
-				</Properties>
-			</Item>
-		</Item>
-		<Item class="ModuleScript" referent="RBX3956997845144006AA98FF5AE4B86E00">
+		<Item class="ModuleScript" referent="RBX16FA672403164369AFA469125C687087">
 			<Properties>
 				<Content name="LinkedSource"><null></null></Content>
 				<ProtectedString name="Source"><![CDATA[--!optimize 2
@@ -1797,7 +1013,7 @@ return Iris
 				<int64 name="SourceAssetId">-1</int64>
 				<BinaryString name="Tags"></BinaryString>
 			</Properties>
-			<Item class="ModuleScript" referent="RBXE3AAC43D92B74835BC0AE0C1310D05C7">
+			<Item class="ModuleScript" referent="RBX292EE0A8FB0648CABE7421C2CB558BC8">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Types)
@@ -3970,7 +3186,7 @@ end
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBX34FA460C74C745C387D9134079927704">
+			<Item class="ModuleScript" referent="RBX41577F46DD0C45F1813D0634C6D6FA0B">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local HttpService: HttpService = game:GetService("HttpService")
@@ -4891,7 +4107,7 @@ end
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBX3291C881DB174A3096CEB7A9D3B9F548">
+			<Item class="ModuleScript" referent="RBXDEABF9C26D5D485ABE2939198ECBF178">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Types)
@@ -4950,7 +4166,7 @@ return {}
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBXD835303C01D949F48F9097E0E328D776">
+			<Item class="ModuleScript" referent="RBX393F4FC870174C4991C723FDBAF9963F">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local WidgetTypes = require(script.Parent.WidgetTypes)
@@ -5633,7 +4849,7 @@ return {}
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBX3C15C5A64FE94206A2EEF2B11AAD5298">
+			<Item class="ModuleScript" referent="RBX836A985F3B28456BB26452E6EDAF71A2">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[--[=[
@@ -6230,7 +5446,7 @@ return {}
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBXCEB8E96A2ECF4B69B10E131C01A9A2C2">
+			<Item class="ModuleScript" referent="RBXAC5A3AF73FF74E20926C9E20A9308CA3">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local TemplateConfig = {
@@ -6547,7 +5763,7 @@ return TemplateConfig
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBXFE1F0E6BBA6D40BB815504FBD4748062">
+			<Item class="ModuleScript" referent="RBXA8DEEE5F9158418E9E3D758FBC9EAC9B">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Types)
@@ -8471,7 +7687,7 @@ end
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
 			</Item>
-			<Item class="ModuleScript" referent="RBX0D3217F9F3A245558A4FAD0C5ABE7EC9">
+			<Item class="ModuleScript" referent="RBX99E03328AFBF4824A25659DC0A831BCF">
 				<Properties>
 					<Content name="LinkedSource"><null></null></Content>
 					<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Types)
@@ -8933,7 +8149,7 @@ end
 					<int64 name="SourceAssetId">-1</int64>
 					<BinaryString name="Tags"></BinaryString>
 				</Properties>
-				<Item class="ModuleScript" referent="RBXAB1863E6FC7747C2B1C255FD1E2236B5">
+				<Item class="ModuleScript" referent="RBXDD482F1611AA4A9A9971D5EBB0EAADAD">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -9039,7 +8255,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX43C20F1E6BF84B029F18B9C62B854F06">
+				<Item class="ModuleScript" referent="RBX4081DDE476934569880E48BE1152E32B">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -9170,7 +8386,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBXA4289013478647DC801BAAC9CB14C0AA">
+				<Item class="ModuleScript" referent="RBX54B8D6DC939F491E8B4BFD27785023E6">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -9678,7 +8894,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX32E33F65CFC140E6B4BD6E230ECAB118">
+				<Item class="ModuleScript" referent="RBXB8ABAFE84CEC4892947B1A138D905662">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -9786,7 +9002,6 @@ return function(Iris: Types.Internal, widgets: Types.WidgetUtility)
                 itemWidth = thisWidget.arguments.Width
             else
 				itemWidth = Iris._config.ItemSpacing.X
-				print(Iris._config.ItemSpacing.X)
             end
             uiListLayout.Padding = UDim.new(0, itemWidth)
             if thisWidget.arguments.VerticalAlignment then
@@ -9847,7 +9062,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX9B7C228A8F1749CDB5AFC36D2C03C9E6">
+				<Item class="ModuleScript" referent="RBX1065A26304304EDFBF3AB38A754099D0">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -10017,7 +9232,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX23328AC56ED9421AA96768ED66FBA25E">
+				<Item class="ModuleScript" referent="RBX6F738D4CE2144EE3AF14D99EC0849B93">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -11420,7 +10635,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX34099F1E6B71466787E81DAFBBBF60C6">
+				<Item class="ModuleScript" referent="RBX0F269CFE0D474F01A006B8983FD4D47A">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -12039,7 +11254,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBXE52E997E63604E949C35A0BB291F6DCA">
+				<Item class="ModuleScript" referent="RBX0729B17A1927423ABE4A48C57E070EC0">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -12700,7 +11915,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX99283DA806A444B3B4589B57C30C1A28">
+				<Item class="ModuleScript" referent="RBX48651A4B82274D2D842DED5FB1ABF5D1">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -12842,7 +12057,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBXF37E7BC5A68B49B5B2F6250E9F10AB82">
+				<Item class="ModuleScript" referent="RBXC26FB0C82A8A4DA99347B8773A3512D8">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -12996,7 +12211,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX446E0EAA18904E1AA212CEA23E09CCA7">
+				<Item class="ModuleScript" referent="RBX39E4B557512C45AF9186B271FDF93A3C">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -13343,7 +12558,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBXFBA1AED8CE674DD4871D0252C7270157">
+				<Item class="ModuleScript" referent="RBX034530C21FDE4F67AC54AEDD68E6B919">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -13990,7 +13205,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX6C96AFF7DF1845C3B150AAB4B56F59FD">
+				<Item class="ModuleScript" referent="RBXAC92C9972BC8443EAB5C0A23D75D880F">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -14137,7 +13352,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX588ACCC6D57C4AC0A15BE66F7E94231D">
+				<Item class="ModuleScript" referent="RBX0C730B4BE03A42A7A487539F2C3FF302">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -14446,7 +13661,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX25D85FF0D0C5444499395AD9CDD6C14E">
+				<Item class="ModuleScript" referent="RBX35BB562525B94E5089962CDFF3249721">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[local Types = require(script.Parent.Parent.Types)
@@ -15537,7 +14752,7 @@ end
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="ModuleScript" referent="RBX7C59DDC3BF2D46FC8F41D59A4A159CED">
+				<Item class="ModuleScript" referent="RBX3EBF3A111EA54A16888FEDA0AE8D6486">
 					<Properties>
 						<Content name="LinkedSource"><null></null></Content>
 						<ProtectedString name="Source"><![CDATA[--!strict
@@ -16062,7 +15277,7 @@ end
 						<int64 name="SourceAssetId">-1</int64>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
-					<Item class="Folder" referent="RBX672E817A208F4C46B25F713AFFBAF6AC">
+					<Item class="Folder" referent="RBX257634FB939B427A89FD03EB8D0BAC68">
 						<Properties>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
@@ -16071,7 +15286,7 @@ end
 							<int64 name="SourceAssetId">-1</int64>
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
-						<Item class="ModuleScript" referent="RBX0D0E4B20787B4875BDA254CDB817A903">
+						<Item class="ModuleScript" referent="RBX87E5AE84AD2F4FDC952051808F288FA1">
 							<Properties>
 								<Content name="LinkedSource"><null></null></Content>
 								<ProtectedString name="Source"><![CDATA[--!strict
@@ -16079,7 +15294,7 @@ end
 	Manages the cleaning of events and other things. Useful for
 	encapsulating state and make deconstructors easy.
 
-	See the [Five Powerful Code Patterns talk](	)
+	See the [Five Powerful Code Patterns talk](https://developer.roblox.com/en-us/videos/5-powerful-code-patterns-behind-top-roblox-games)
 	for a more in-depth look at Maids in top games.
 
 	```lua
@@ -16417,7 +15632,7 @@ return Maid]]></ProtectedString>
 								<BinaryString name="Tags"></BinaryString>
 							</Properties>
 						</Item>
-						<Item class="ModuleScript" referent="RBX4209406E072A4AE6B0E9C5766262600A">
+						<Item class="ModuleScript" referent="RBXB5282C802AB04E95B995F526D53160C9">
 							<Properties>
 								<Content name="LinkedSource"><null></null></Content>
 								<ProtectedString name="Source"><![CDATA[--!strict
@@ -16512,7 +15727,7 @@ return Path]]></ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Folder" referent="RBX7FC258D485DC470D8235F96D4D682942">
+					<Item class="Folder" referent="RBX390B17DAC0874FE6BEED6A2735629046">
 						<Properties>
 							<BinaryString name="AttributesSerialize"></BinaryString>
 							<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
@@ -16521,7 +15736,7 @@ return Path]]></ProtectedString>
 							<int64 name="SourceAssetId">-1</int64>
 							<BinaryString name="Tags"></BinaryString>
 						</Properties>
-						<Item class="ModuleScript" referent="RBX031E3EA9CF104DF5915EA598357EE38F">
+						<Item class="ModuleScript" referent="RBXADD0178B19814B24BF9F3591911CF37B">
 							<Properties>
 								<Content name="LinkedSource"><null></null></Content>
 								<ProtectedString name="Source"><![CDATA[--!strict
@@ -16679,7 +15894,7 @@ return PieChart]]></ProtectedString>
 								<BinaryString name="Tags"></BinaryString>
 							</Properties>
 						</Item>
-						<Item class="ModuleScript" referent="RBXCB7CF5A2DB6D4336BC3B81EE5DFAD101">
+						<Item class="ModuleScript" referent="RBX7DE72316E1E148809D77942A598778A8">
 							<Properties>
 								<Content name="LinkedSource"><null></null></Content>
 								<ProtectedString name="Source"><![CDATA[--!strict
@@ -16764,13 +15979,13 @@ function Chart.new()
 end
 
 function Chart._calculate_range(self: self)
-	local range_x = 0
-	local max_x = -huge
-	local min_x = huge
+	local range_x = 2
+	local max_x = 1
+	local min_x = -1
 
-	local range_y = 0
-	local max_y = -huge
-	local min_y = huge
+	local range_y = 2
+	local max_y = 1
+	local min_y = -1
 	
 	for _, plot: Plot in self._chart_data do
 		for _, marker: Vector2 in ipairs(plot.Data) do
@@ -16912,7 +16127,7 @@ return Chart]]></ProtectedString>
 								<int64 name="SourceAssetId">-1</int64>
 								<BinaryString name="Tags"></BinaryString>
 							</Properties>
-							<Item class="ModuleScript" referent="RBXBF4B742081A242419732A2BC8729212C">
+							<Item class="ModuleScript" referent="RBXEE87979B15AB4AAA93723194689D3815">
 								<Properties>
 									<Content name="LinkedSource"><null></null></Content>
 									<ProtectedString name="Source"><![CDATA[--!strict
@@ -17030,7 +16245,7 @@ return MeterTape]]></ProtectedString>
 							</Item>
 						</Item>
 					</Item>
-					<Item class="ModuleScript" referent="RBX9AF84F7A3B6A4DC4B4D4D4550E5DF9D4">
+					<Item class="ModuleScript" referent="RBX71B06AB5810B43F596C82C9B804739B5">
 						<Properties>
 							<Content name="LinkedSource"><null></null></Content>
 							<ProtectedString name="Source"><![CDATA[--!strict
@@ -17108,6 +16323,375 @@ return Util]]></ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
+			</Item>
+		</Item>
+		<Item class="ModuleScript" referent="RBX96B90CECDB464562AAF4C6D708F96808">
+			<Properties>
+				<Content name="LinkedSource"><null></null></Content>
+				<ProtectedString name="Source"><![CDATA[--!strict
+local huge = math.huge
+
+local PIDController = {}
+PIDController.__index = PIDController
+
+function PIDController.new(Kp: number?, Ki: number?, Kd: number?, Min: number?, Max: number?): PIDController	
+	local self = setmetatable({}, PIDController):: self
+	self._gains = {
+		Kp = Kp or 1;
+		Ki = Ki or 0.001;
+		Kd = Kd or 0.5;
+	}
+	self._bounds = NumberRange.new(Min or -huge, Max or huge)
+	
+	self._integrator_on = true
+	self._integral = 0
+	self._previous_error = 0
+	
+	return self
+end
+
+function PIDController.Compound(Amount: number, Kp: number?, Ki: number?, Kd: number?, Min: number?, Max: number?): Compound
+	local compound = {}
+	for _ = 1, Amount do
+		table.insert(compound, PIDController.new(Kp, Ki, Kd, Min, Max))
+	end
+	return compound
+end
+
+function PIDController.Update(self: self, SetPoint: number, ProcessValue: number, dt: number): number
+	local error = SetPoint - ProcessValue
+
+	local pOut = self._gains.Kp * error
+
+	local iOut = 0
+	if self._integrator_on then
+		self._integral += error * dt
+		iOut = self._gains.Ki * self._integral
+	end
+
+	local dOut = self._gains.Kd * (error - self._previous_error) / dt
+
+	local rawOutput = pOut + iOut + dOut
+	local output = math.clamp(rawOutput, self._bounds.Min, self._bounds.Max)
+
+	self._integrator_on = 
+		not (rawOutput ~= output and math.sign(rawOutput) == math.sign(error))
+
+	self._previous_error = error
+	return output
+end
+
+function PIDController.SetGains(self: self, Kp: number?, Ki: number?, Kd: number?)
+	self._gains = {
+		Kp = Kp or 1,
+		Ki = Ki or 0.001,
+		Kd = Kd or 0.5,
+	}
+end
+
+function PIDController.GetGains(self: self): (number, number, number)
+	return self._gains.Kp, self._gains.Ki, self._gains.Kd
+end
+
+function PIDController.SetBounds(self: self, Min: number?, Max: number?)
+	self._bounds = NumberRange.new(Min or -huge, Max or huge)
+end
+
+function PIDController.GetBounds(self: self): (number, number)
+	return self._bounds.Min, self._bounds.Max
+end
+
+function PIDController.Reset(self: self)
+	self._integrator_on = true
+	self._integral = 0
+	self._previous_error = 0
+end
+
+function PIDController.Destroy(self: self)
+	table.clear(self)
+end
+
+export type PIDArgsVararg = (number | number | number | number | number)
+export type Compound = {[number]: PIDController}
+
+export type PIDController = {
+	_gains: {
+		Kp: number,
+		Ki: number,
+		Kd: number,
+	},
+	_bounds: NumberRange,
+
+	_integrator_on: boolean,
+	_integral: number,
+	_previous_error: number,
+} & typeof(PIDController)
+type self = PIDController
+
+return PIDController]]></ProtectedString>
+				<string name="ScriptGuid">{2187E2ED-5CCF-4A75-AB2B-20F47F40F01A}</string>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				<bool name="DefinesCapabilities">false</bool>
+				<string name="Name">PIDController</string>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+			<Item class="Folder" referent="RBXF1D7B535E6F64121AA79329003BDE2FA">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<string name="Name">Util</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="ModuleScript" referent="RBX0F8D4219F8E047A08CB38F42D609CE08">
+					<Properties>
+						<Content name="LinkedSource"><null></null></Content>
+						<ProtectedString name="Source"><![CDATA[--!strict
+local PIDController = require("../../PIDController")
+local Vector2 = require("../PIDWrappers/Vector2")
+local Vector3 = require("../PIDWrappers/Vector3")
+
+local Tuner = {}
+Tuner.__index = Tuner
+
+function Tuner.new(PID: ExpectedType, name: string?, parent: Instance?): Tuner
+	local self = setmetatable({}, Tuner):: self
+	
+	self.Folder = Instance.new("Folder")
+	self.Folder.Parent = parent
+	self.Folder.Name = name or "PID_Tuner"
+	
+	self:_initialize(PID)
+	
+	return self
+end
+
+function Tuner._bind_pid_controller(self: self, PIDController: PIDController)
+	local folder = self.Folder
+	
+	local Kp, Ki, Kd = PIDController:GetGains()
+	folder:SetAttribute("Kp", Kp)
+	folder:SetAttribute("Ki", Ki)
+	folder:SetAttribute("Kd", Kd)
+	
+	local Min, Max = PIDController:GetBounds()
+	folder:SetAttribute("Min", Min)
+	folder:SetAttribute("Max", Max)
+	
+	folder.AttributeChanged:Connect(function()
+		PIDController:SetGains(
+			folder:GetAttribute("Kp"),
+			folder:GetAttribute("Ki"),
+			folder:GetAttribute("Kd")
+		)
+		
+		PIDController:SetBounds(
+			folder:GetAttribute("Min"),
+			folder:GetAttribute("Max")
+		)
+	end)
+end
+
+function Tuner._initialize(self: self, PID: ExpectedType | any)
+	if not PID._compound then
+		self:_bind_pid_controller(PID)
+	elseif PID._compound then
+		self:_initialize(PID._compound)
+	elseif typeof(PID) == "table" then
+		for _, PID in ipairs(PID) do
+			self:_initialize(PID)
+		end
+	end
+end
+
+function Tuner.Destroy(self: self)
+	if self.Folder then
+		self.Folder:Destroy()
+	end
+	
+	table.clear(self)
+end
+
+type PIDController = PIDController.PIDController
+type Compound = PIDController.Compound
+type Vector3PID = Vector3.Wrapper
+type Vector2PID = Vector2.Wrapper
+
+type ExpectedType = PIDController | Compound | Vector3PID | Vector2PID
+
+export type Tuner = {
+	Folder: Folder,
+} & typeof(Tuner)
+type self = Tuner
+
+return Tuner]]></ProtectedString>
+						<string name="ScriptGuid">{610E7864-97F5-4FF9-8296-497C017F6E0B}</string>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Tuner</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Folder" referent="RBX44160CB4B4964462BCDDEABF78BFA3AC">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<string name="Name">PIDWrappers</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="ModuleScript" referent="RBX003AB1E9A67F432F978491E2FEED9CEE">
+					<Properties>
+						<Content name="LinkedSource"><null></null></Content>
+						<ProtectedString name="Source"><![CDATA[--!strict
+local PIDController = require("../../PIDController")
+
+local Wrapper = {}
+Wrapper.__index = Wrapper
+
+function Wrapper.new(Kp: number?, Ki: number?, Kd: number?, Min: number?, Max: number?): Wrapper
+	local self = setmetatable({}, Wrapper):: self
+	self._compound = PIDController.Compound(2, Kp, Ki, Kd, Min, Max)
+
+	return self
+end
+
+function Wrapper.Update(self: self, SetPoint: Vector2, ProcessValue: Vector2, dt: number): Vector2
+	return Vector2.new(
+		self._compound[1]:Update(SetPoint.X, ProcessValue.X, dt),
+		self._compound[2]:Update(SetPoint.Y, ProcessValue.Y, dt)
+	)
+end
+
+function PIDController.SetGains(self: self, Kp: number?, Ki: number?, Kd: number?)
+	self._compound[1]:SetGains(Kp, Ki, Kd)
+	self._compound[2]:SetGains(Kp, Ki, Kd)
+end
+
+function PIDController.GetGains(self: self): (number, number, number)
+	return self._compound[1]._gains.Kp, self._compound[1]._gains.Ki, self._compound[1]._gains.Kd
+end
+
+function PIDController.SetBounds(self: self, Min: number?, Max: number?)
+	self._compound[1]:SetGains(Min, Max)
+	self._compound[2]:SetGains(Min, Max)
+end
+
+function PIDController.GetBounds(self: self): (number, number)
+	return self._compound[1]._bounds.Min, self._compound[1]._bounds.Max
+end
+
+function Wrapper.Destroy(self: self)
+	table.clear(self)
+end
+
+type PIDController = PIDController.PIDController
+type Compound = PIDController.Compound
+
+export type Wrapper = {
+	_compound: Compound,
+} & typeof(Wrapper)
+type self = Wrapper
+
+return Wrapper]]></ProtectedString>
+						<string name="ScriptGuid">{E44F4AFD-17C4-4405-A6FD-34409DE13F14}</string>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Vector2</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX07CE0BD23F8F40358A6C7D543A5046CA">
+					<Properties>
+						<Content name="LinkedSource"><null></null></Content>
+						<ProtectedString name="Source"><![CDATA[--!strict
+local PIDController = require("../../PIDController")
+
+local Wrapper = {}
+Wrapper.__index = Wrapper
+
+function Wrapper.new(Kp: number?, Ki: number?, Kd: number?, Min: number?, Max: number?): Wrapper
+	local self = setmetatable({}, Wrapper):: self
+	self._compound = PIDController.Compound(3, Kp, Ki, Kd, Min, Max)
+
+	return self
+end
+
+function Wrapper.Update(self: self, SetPoint: Vector3, ProcessValue: Vector3, dt: number): Vector3
+	return Vector3.new(
+		self._compound[1]:Update(SetPoint.X, ProcessValue.X, dt),
+		self._compound[2]:Update(SetPoint.Y, ProcessValue.Y, dt),
+		self._compound[3]:Update(SetPoint.Z, ProcessValue.Z, dt)
+	)
+end
+
+function PIDController.SetGains(self: self, Kp: number?, Ki: number?, Kd: number?)
+	self._compound[1]:SetGains(Kp, Ki, Kd)
+	self._compound[2]:SetGains(Kp, Ki, Kd)
+	self._compound[3]:SetGains(Kp, Ki, Kd)
+end
+
+function PIDController.GetGains(self: self): (number, number, number)
+	return self._compound[1]._gains.Kp, self._compound[1]._gains.Ki, self._compound[1]._gains.Kd
+end
+
+function PIDController.SetBounds(self: self, Min: number?, Max: number?)
+	self._compound[1]:SetGains(Min, Max)
+	self._compound[2]:SetGains(Min, Max)
+	self._compound[3]:SetGains(Min, Max)
+end
+
+function PIDController.GetBounds(self: self): (number, number)
+	return self._compound[1]._bounds.Min, self._compound[1]._bounds.Max
+end
+
+function Wrapper.Destroy(self: self)
+	table.clear(self)
+end
+
+type PIDController = PIDController.PIDController
+type Compound = PIDController.Compound
+
+export type Wrapper = {
+	_compound: Compound,
+} & typeof(Wrapper)
+type self = Wrapper
+
+return Wrapper]]></ProtectedString>
+						<string name="ScriptGuid">{E3CA1DAC-0D5B-4340-8B48-C4EAFD7B5F73}</string>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<string name="Name">Vector3</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="PackageLink" referent="RBX9FD47A0D7D804036AFBE65071FF6EC36">
+				<Properties>
+					<bool name="AutoUpdate">false</bool>
+					<string name="DefaultName"></string>
+					<int name="ModifiedState">-1</int>
+					<Content name="PackageIdSerialize"><url>rbxassetid://95851863209853</url></Content>
+					<BinaryString name="SerializedDefaultAttributes"></BinaryString>
+					<int64 name="VersionIdSerialize">2</int64>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<string name="Name">PackageLink</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
 			</Item>
 		</Item>
 	</Item>
