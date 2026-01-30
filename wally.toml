@@ -6,5 +6,6 @@ authors = ["LinusKat"]
 version = "1.0.1"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
+exclude = ["wally.toml", "README.md", "LICENSE.txt", "default.project.json", "aftman.toml", "public"]
 
 [dependencies]
