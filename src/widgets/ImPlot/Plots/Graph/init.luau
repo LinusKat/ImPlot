@@ -4,6 +4,7 @@ local Util = require("../Util")
 
 local table_clear = table.clear
 local table_insert = table.insert
+local huge = math.huge
 local min = math.min
 local max = math.max
 
@@ -11,7 +12,7 @@ local function Square(Color: Color3, Scale: number, Transparency: number)
 	local ui_object = Instance.new("Frame")
 	ui_object.Size = UDim2.fromOffset(Scale, Scale)
 	ui_object.BackgroundColor3 = Color
-	ui_object.AnchorPoint = Vector2.new(0.5, 0.5)
+	ui_object.AnchorPoint = Vector2.new(.5, .5)
 	ui_object.BackgroundTransparency = Transparency
 
 	local stroke = Instance.new("UIStroke")
@@ -31,16 +32,7 @@ local function Circle(Color: Color3, Scale: number, Transparency: number)
 	return ui_object
 end
 
-local function GraphXYToScaleUDIM2(
-	MinX: number,
-	XRange: number,
-	MinY: number,
-	YRange: number,
-	XScale: number,
-	YScale: number,
-	x: number,
-	y: number
-)
+local function GraphXYToScaleUDIM2(MinX: number, XRange: number, MinY: number, YRange: number, XScale: number, YScale: number, x: number, y: number)
 	local centerX = MinX + XRange / 2
 
 	local xScale = ((x - centerX) / XRange) * XScale + 0.5
@@ -49,16 +41,7 @@ local function GraphXYToScaleUDIM2(
 	return UDim2.fromScale(xScale, yScale)
 end
 
-local function MarkerXYToScaleUDIM2(
-	MinX: number,
-	XRange: number,
-	MinY: number,
-	YRange: number,
-	XScale: number,
-	YScale: number,
-	x: number,
-	y: number
-)
+local function MarkerXYToScaleUDIM2(MinX: number, XRange: number, MinY: number, YRange: number, XScale: number, YScale: number, x: number, y: number)
 	local centerX = MinX + XRange / 2
 	local centerY = MinY + YRange / 2
 
@@ -72,7 +55,7 @@ local Chart = {}
 Chart.__index = Chart
 
 function Chart.new()
-	local self = setmetatable({}:: self, Chart)
+	local self = setmetatable({}, Chart):: self
 	self._chart_data = {}
 	self._paths = {}
 
@@ -81,7 +64,7 @@ function Chart.new()
 	self.Canvas.Size = UDim2.fromScale(1, 1)
 
 	self.XScale = 1
-	self.YScale = 0.9
+	self.YScale = .9
 
 	self.Range = {
 		RangeX = 1,
@@ -104,8 +87,8 @@ function Chart._calculate_range(self: self)
 	local range_y = 2
 	local max_y = 1
 	local min_y = -1
-
-	for _, plot: Plot in ipairs(self._chart_data) do
+	
+	for _, plot: Plot in self._chart_data do
 		for _, marker: Vector2 in ipairs(plot.Data) do
 			max_x = max(max_x, marker.X)
 			min_x = min(min_x, marker.X)
@@ -129,55 +112,34 @@ function Chart._calculate_range(self: self)
 	}
 end
 
-function Chart._draw_scatter(self: self, Data: { Vector2 }, MarkerStyle: MarkerStyle)
-	local template = MarkerStyle.Shape == "Square"
-			and Square(MarkerStyle.Color, MarkerStyle.Size, MarkerStyle.Transparency)
-		or Circle(MarkerStyle.Color, MarkerStyle.Size, MarkerStyle.Transparency)
+function Chart._draw_scatter(self: self, Data: {Vector2}, MarkerStyle: MarkerStyle)
+	local template = MarkerStyle.Shape == "Square" and
+		Square(MarkerStyle.Color, MarkerStyle.Size, MarkerStyle.Transparency) or
+		Circle(MarkerStyle.Color, MarkerStyle.Size, MarkerStyle.Transparency)
 
 	local range = self.Range
 
 	for _, marker: Vector2 in ipairs(Data) do
 		local clone = template:Clone()
-		clone.Position = MarkerXYToScaleUDIM2(
-			range.MinX,
-			range.RangeX,
-			range.MinY,
-			range.RangeY,
-			self.XScale,
-			self.YScale,
-			marker.X,
-			marker.Y
-		)
+		clone.Position = MarkerXYToScaleUDIM2(range.MinX, range.RangeX, range.MinY, range.RangeY, self.XScale, self.YScale, marker.X, marker.Y)
 		clone.Parent = self.Canvas
 	end
 
 	template:Destroy()
 end
 
-function Chart._draw_graph(self: self, Data: { Vector2 }, GraphStyle: GraphStyle)
+function Chart._draw_graph(self: self, Data: {Vector2}, GraphStyle: GraphStyle)
 	local packed_points = {}
 
 	local range = self.Range
 
 	for _, marker: Vector2 in ipairs(Data) do
-		table_insert(
-			packed_points,
-			Path2DControlPoint.new(
-				GraphXYToScaleUDIM2(
-					range.MinX,
-					range.RangeX,
-					range.MinY,
-					range.RangeY,
-					self.XScale,
-					self.YScale,
-					marker.X,
-					marker.Y
-				)
-			)
-		)
+		table_insert(packed_points, Path2DControlPoint.new(
+			GraphXYToScaleUDIM2(range.MinX, range.RangeX, range.MinY, range.RangeY, self.XScale, self.YScale, marker.X, marker.Y)
+			))
 	end
 
-	local path = Path2D.new() :: P2D
+	local path = Path2D.new():: P2D
 	path:PushProperty("Color3", GraphStyle.Color)
 	path:PushProperty("Thickness", GraphStyle.Thickness)
 	path:PushProperty("Parent", self.Canvas)
@@ -190,8 +152,7 @@ end
 function Chart._update(self: self)
 	for _, path: P2D in ipairs(self._paths) do
 		path:Destroy()
-	end
-	table_clear(self._paths)
+	end; table_clear(self._paths)
 	self.Canvas:ClearAllChildren()
 
 	self:_calculate_range()
@@ -205,9 +166,9 @@ function Chart._update(self: self)
 	end
 end
 
-function Chart.SetChartData(self: self, Data: { Plot })
+function Chart.SetChartData(self: self, Data: {Plot})
 	table_clear(self._chart_data)
-	self._chart_data = Util.DeepCopy(Data) :: { Plot }
+	self._chart_data = Util.DeepCopy(Data):: {Plot}
 
 	self:_update()
 end
@@ -233,14 +194,14 @@ export type GraphStyle = {
 }
 
 export type Plot = {
-	Data: { Vector2 },
+	Data: {Vector2},
 	MarkerStyle: MarkerStyle?,
 	GraphStyle: GraphStyle?,
 }
 
 export type Chart = {
-	_chart_data: { Plot },
-	_paths: { P2D },
+	_chart_data: {Plot},
+	_paths: {P2D},
 
 	Canvas: CanvasGroup,
 	XScale: number,
@@ -253,7 +214,7 @@ export type Chart = {
 
 		RangeY: number,
 		MinY: number,
-		MaxY: number,
+		MaxY: number
 	},
 } & typeof(Chart)
 type self = Chart

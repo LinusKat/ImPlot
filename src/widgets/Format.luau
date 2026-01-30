@@ -103,7 +103,6 @@ return function(Iris: Types.Internal, widgets: Types.WidgetUtility)
                 itemWidth = thisWidget.arguments.Width
             else
 				itemWidth = Iris._config.ItemSpacing.X
-				print(Iris._config.ItemSpacing.X)
             end
             uiListLayout.Padding = UDim.new(0, itemWidth)
             if thisWidget.arguments.VerticalAlignment then

@@ -1,22 +1,12 @@
 {
-	"name": "ImPlot",
-	"tree": {
-		"$className": "DataModel",
+  "name": "ImPlot",
+  "tree": {
+    "$className": "DataModel",
 
-		"StarterPlayer": {
-			"StarterPlayerScripts": {
-				"ImGui_Rojo": {
-					"$path": "Packages",
-					"$ignoreUnknownInstances": true,
-					"widgets": {
-						"$path": "Packages/iris/widgets",
-						"$ignoreUnknownInstances": true,
-						"ImPlot": {
-							"$path": "src"
-						}
-					}
-				}
-			}
-		}
-	}
+    "ReplicatedStorage": {
+      "Iris": {
+        "$path": "src"
+      }
+    }
+  }
 }

@@ -17,11 +17,11 @@ local Path = {}
 Path.__index = Path
 
 function Path.new()
-	local self = setmetatable({} :: self, Path)
+	local self = setmetatable({}:: self, Path)
 	self._paths = {}
 	self._control_points = {}
 	self._properties = {}
-
+	
 	return self
 end
 
@@ -49,7 +49,7 @@ function Path._generate_paths(self: self)
 
 		Path2D:SetControlPoints(split)
 		self:_set_path_properties(Path2D)
-	end
+	end	
 end
 
 function Path.SetControlPoints(self: self, ControlPoints: ControlPoints)
@@ -67,12 +67,12 @@ function Path.Destroy(self: self)
 	table_clear(self)
 end
 
-export type ControlPoints = { Path2DControlPoint }
+export type ControlPoints = {Path2DControlPoint}
 export type Property = "Name" | "Parent" | "Closed" | "Visible" | "Color3" | "Thickness" | "ZIndex"
 export type Path = {
-	_paths: { Path2D },
+	_paths: {Path2D},
 	_control_points: ControlPoints,
-	_properties: { [string]: any },
+	_properties: {[string]: any},
 } & typeof(Path)
 
 type self = Path

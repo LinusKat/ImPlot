@@ -1,19 +1,19 @@
 local Types = require(script.Parent.Types)
 
 return function(Iris: Types.Iris)
-	-- basic wrapper for nearly every widget, saves space.
-	local function wrapper(name)
-		return function(arguments, states)
-			return Iris.Internal._Insert(name, arguments, states)
-		end
-	end
+    -- basic wrapper for nearly every widget, saves space.
+    local function wrapper(name)
+        return function(arguments, states)
+            return Iris.Internal._Insert(name, arguments, states)
+        end
+    end
 
-	--[[
+    --[[
         ----------------------------
             [SECTION] Window API
         ----------------------------
     ]]
-	--[=[
+    --[=[
         @class Window
         
         Windows are the fundamental widget for Iris. Every other widget must be a descendant of a window.
@@ -37,7 +37,7 @@ return function(Iris: Types.Iris)
         ```
     ]=]
 
-	--[=[
+    --[=[
         @within Window
         @prop Window Iris.Window
         @tag Widget
@@ -79,18 +79,18 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Window = wrapper("Window")
+    Iris.Window = wrapper("Window")
 
-	--[=[
+    --[=[
         @within Iris
         @function SetFocusedWindow
         @param window Types.Window -- the window to focus.
 
         Sets the focused window to the window provided, which brings it to the front and makes it active.
     ]=]
-	Iris.SetFocusedWindow = Iris.Internal.SetFocusedWindow
+    Iris.SetFocusedWindow = Iris.Internal.SetFocusedWindow
 
-	--[=[
+    --[=[
         @within Window
         @prop Tooltip Iris.Tooltip
         @tag Widget
@@ -111,19 +111,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Tooltip = wrapper("Tooltip")
+    Iris.Tooltip = wrapper("Tooltip")
 
-	--[[
+    --[[
         ---------------------------------
             [SECTION] Menu Widget API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class Menu
         Menu API
     ]=]
 
-	--[=[
+    --[=[
         @within Menu
         @prop MenuBar Iris.MenuBar
         @tag Widget
@@ -139,9 +139,9 @@ return function(Iris: Types.Iris)
         hasState = false
         ```
     ]=]
-	Iris.MenuBar = wrapper("MenuBar")
+    Iris.MenuBar = wrapper("MenuBar")
 
-	--[=[
+    --[=[
         @within Menu
         @prop Menu Iris.Menu
         @tag Widget
@@ -189,9 +189,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Menu = wrapper("Menu")
+    Iris.Menu = wrapper("Menu")
 
-	--[=[
+    --[=[
         @within Menu
         @prop MenuItem Iris.MenuItem
         @tag Widget
@@ -223,9 +223,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.MenuItem = wrapper("MenuItem")
+    Iris.MenuItem = wrapper("MenuItem")
 
-	--[=[
+    --[=[
         @within Menu
         @prop MenuToggle Iris.MenuToggle
         @tag Widget
@@ -262,19 +262,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.MenuToggle = wrapper("MenuToggle")
+    Iris.MenuToggle = wrapper("MenuToggle")
 
-	--[[
+    --[[
         -----------------------------------
             [SECTION] Format Widget Iris
         -----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Format
         Format API
     ]=]
 
-	--[=[
+    --[=[
         @within Format
         @prop Separator Iris.Separator
         @tag Widget
@@ -296,9 +296,9 @@ return function(Iris: Types.Iris)
         hasState = false
         ```
     ]=]
-	Iris.Separator = wrapper("Separator")
+    Iris.Separator = wrapper("Separator")
 
-	--[=[
+    --[=[
         @within Format
         @prop Indent Iris.Indent
         @tag Widget
@@ -325,9 +325,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Indent = wrapper("Indent")
+    Iris.Indent = wrapper("Indent")
 
-	--[=[
+    --[=[
         @within Format
         @prop SameLine Iris.SameLine
         @tag Widget
@@ -358,9 +358,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SameLine = wrapper("SameLine")
+    Iris.SameLine = wrapper("SameLine")
 
-	--[=[
+    --[=[
         @within Format
         @prop Group Iris.Group
         @tag Widget
@@ -373,19 +373,19 @@ return function(Iris: Types.Iris)
         hasState = false
         ```
     ]=]
-	Iris.Group = wrapper("Group")
+    Iris.Group = wrapper("Group")
 
-	--[[
+    --[[
         ---------------------------------
             [SECTION] Text Widget API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class Text
         Text Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Text
         @prop Text Iris.Text
         @tag Widget
@@ -416,9 +416,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Text = wrapper("Text")
+    Iris.Text = wrapper("Text")
 
-	--[=[
+    --[=[
         @within Text
         @prop TextWrapped Iris.Text
         @tag Widget
@@ -437,12 +437,12 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.TextWrapped = function(arguments: Types.WidgetArguments): Types.Text
-		arguments[2] = true
-		return Iris.Internal._Insert("Text", arguments) :: Types.Text
-	end
+    Iris.TextWrapped = function(arguments: Types.WidgetArguments): Types.Text
+        arguments[2] = true
+        return Iris.Internal._Insert("Text", arguments) :: Types.Text
+    end
 
-	--[=[
+    --[=[
         @within Text
         @prop TextColored Iris.Text
         @tag Widget
@@ -462,13 +462,13 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.TextColored = function(arguments: Types.WidgetArguments): Types.Text
-		arguments[3] = arguments[2]
-		arguments[2] = nil
-		return Iris.Internal._Insert("Text", arguments) :: Types.Text
-	end
+    Iris.TextColored = function(arguments: Types.WidgetArguments): Types.Text
+        arguments[3] = arguments[2]
+        arguments[2] = nil
+        return Iris.Internal._Insert("Text", arguments) :: Types.Text
+    end
 
-	--[=[
+    --[=[
         @within Text
         @prop SeparatorText Iris.SeparatorText
         @tag Widget
@@ -496,9 +496,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SeparatorText = wrapper("SeparatorText")
+    Iris.SeparatorText = wrapper("SeparatorText")
 
-	--[=[
+    --[=[
         @within Text
         @prop InputText Iris.InputText
         @tag Widget
@@ -535,19 +535,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputText = wrapper("InputText")
+    Iris.InputText = wrapper("InputText")
 
-	--[[
+    --[[
         ----------------------------------
             [SECTION] Basic Widget API
         ----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Basic
         Basic Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Basic
         @prop Button Iris.Button
         @tag Widget
@@ -570,9 +570,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Button = wrapper("Button")
+    Iris.Button = wrapper("Button")
 
-	--[=[
+    --[=[
         @within Basic
         @prop SmallButton Iris.SmallButton
         @tag Widget
@@ -595,9 +595,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SmallButton = wrapper("SmallButton")
+    Iris.SmallButton = wrapper("SmallButton")
 
-	--[=[
+    --[=[
         @within Basic
         @prop Checkbox Iris.Checkbox
         @tag Widget
@@ -621,9 +621,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Checkbox = wrapper("Checkbox")
+    Iris.Checkbox = wrapper("Checkbox")
 
-	--[=[
+    --[=[
         @within Basic
         @prop RadioButton Iris.RadioButton
         @tag Widget
@@ -649,21 +649,21 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.RadioButton = wrapper("RadioButton")
+    Iris.RadioButton = wrapper("RadioButton")
 
-	--[[
+    --[[
         ----------------------------------
             [SECTION] Image Widget API
         ----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Image
         Image Widget API
 
         Provides two widgets for Images and ImageButtons, which provide the same control as a an ImageLabel instance.
     ]=]
 
-	--[=[
+    --[=[
         @within Image
         @prop Image Iris.Image
         @tag Widget
@@ -689,9 +689,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Image = wrapper("Image")
+    Iris.Image = wrapper("Image")
 
-	--[=[
+    --[=[
         @within Image
         @prop ImageButton Iris.ImageButton
         @tag Widget
@@ -721,19 +721,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.ImageButton = wrapper("ImageButton")
+    Iris.ImageButton = wrapper("ImageButton")
 
-	--[[
+    --[[
         ---------------------------------
             [SECTION] Tree Widget API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class Tree
         Tree Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Tree
         @prop Tree Iris.Tree
         @tag Widget
@@ -760,9 +760,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Tree = wrapper("Tree")
+    Iris.Tree = wrapper("Tree")
 
-	--[=[
+    --[=[
         @within Tree
         @prop CollapsingHeader Iris.CollapsingHeader
         @tag Widget
@@ -787,19 +787,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.CollapsingHeader = wrapper("CollapsingHeader")
+    Iris.CollapsingHeader = wrapper("CollapsingHeader")
 
-	--[[
+    --[[
         --------------------------------
             [SECTION] Tab Widget API
         --------------------------------
     ]]
-	--[=[
+    --[=[
         @class Tab
         Tab Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Tab
         @prop TabBar Iris.TabBar
         @tag Widget
@@ -820,9 +820,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.TabBar = wrapper("TabBar")
+    Iris.TabBar = wrapper("TabBar")
 
-	--[=[
+    --[=[
         @within Tab
         @prop Tab Iris.Tab
         @tag Widget
@@ -856,14 +856,14 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Tab = wrapper("Tab")
+    Iris.Tab = wrapper("Tab")
 
-	--[[
+    --[[
         ----------------------------------
             [SECTION] Input Widget API
         ----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Input
         Input Widget API
 
@@ -900,7 +900,7 @@ return function(Iris: Types.Iris)
         :::
     ]=]
 
-	--[=[
+    --[=[
         @within Input
         @prop InputNum Iris.InputNum
         @tag Widget
@@ -929,9 +929,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputNum = wrapper("InputNum")
+    Iris.InputNum = wrapper("InputNum")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputVector2 Iris.InputVector2
         @tag Widget
@@ -959,9 +959,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputVector2 = wrapper("InputVector2")
+    Iris.InputVector2 = wrapper("InputVector2")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputVector3 Iris.InputVector3
         @tag Widget
@@ -989,9 +989,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputVector3 = wrapper("InputVector3")
+    Iris.InputVector3 = wrapper("InputVector3")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputUDim Iris.InputUDim
         @tag Widget
@@ -1020,9 +1020,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputUDim = wrapper("InputUDim")
+    Iris.InputUDim = wrapper("InputUDim")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputUDim2 Iris.InputUDim2
         @tag Widget
@@ -1051,9 +1051,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputUDim2 = wrapper("InputUDim2")
+    Iris.InputUDim2 = wrapper("InputUDim2")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputRect Iris.InputRect
         @tag Widget
@@ -1081,14 +1081,14 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputRect = wrapper("InputRect")
+    Iris.InputRect = wrapper("InputRect")
 
-	--[[
+    --[[
         ---------------------------------
             [SECTION] Drag Widget API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class Drag
         Drag Widget API
 
@@ -1097,7 +1097,7 @@ return function(Iris: Types.Iris)
         See [Input] for more details on the arguments.
     ]=]
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragNum Iris.DragNum
         @tag Widget
@@ -1127,9 +1127,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragNum = wrapper("DragNum")
+    Iris.DragNum = wrapper("DragNum")
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragVector2 Iris.DragVector2
         @tag Widget
@@ -1159,9 +1159,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragVector2 = wrapper("DragVector2")
+    Iris.DragVector2 = wrapper("DragVector2")
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragVector3 Iris.DragVector3
         @tag Widget
@@ -1191,9 +1191,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragVector3 = wrapper("DragVector3")
+    Iris.DragVector3 = wrapper("DragVector3")
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragUDim Iris.DragUDim
         @tag Widget
@@ -1223,9 +1223,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragUDim = wrapper("DragUDim")
+    Iris.DragUDim = wrapper("DragUDim")
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragUDim2 Iris.DragUDim2
         @tag Widget
@@ -1255,9 +1255,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragUDim2 = wrapper("DragUDim2")
+    Iris.DragUDim2 = wrapper("DragUDim2")
 
-	--[=[
+    --[=[
         @within Drag
         @prop DragRect Iris.DragRect
         @tag Widget
@@ -1287,9 +1287,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.DragRect = wrapper("DragRect")
+    Iris.DragRect = wrapper("DragRect")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputColor3 Iris.InputColor3
         @tag Widget
@@ -1318,9 +1318,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputColor3 = wrapper("InputColor3")
+    Iris.InputColor3 = wrapper("InputColor3")
 
-	--[=[
+    --[=[
         @within Input
         @prop InputColor4 Iris.InputColor4
         @tag Widget
@@ -1352,14 +1352,14 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputColor4 = wrapper("InputColor4")
+    Iris.InputColor4 = wrapper("InputColor4")
 
-	--[[
+    --[[
         -----------------------------------
             [SECTION] Slider Widget API
         -----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Slider
         Slider Widget API
 
@@ -1369,7 +1369,7 @@ return function(Iris: Types.Iris)
         See [Input] for more details on the arguments.
     ]=]
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderNum Iris.SliderNum
         @tag Widget
@@ -1398,9 +1398,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderNum = wrapper("SliderNum")
+    Iris.SliderNum = wrapper("SliderNum")
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderVector2 Iris.SliderVector2
         @tag Widget
@@ -1429,9 +1429,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderVector2 = wrapper("SliderVector2")
+    Iris.SliderVector2 = wrapper("SliderVector2")
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderVector3 Iris.SliderVector3
         @tag Widget
@@ -1460,9 +1460,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderVector3 = wrapper("SliderVector3")
+    Iris.SliderVector3 = wrapper("SliderVector3")
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderUDim Iris.SliderUDim
         @tag Widget
@@ -1491,9 +1491,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderUDim = wrapper("SliderUDim")
+    Iris.SliderUDim = wrapper("SliderUDim")
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderUDim2 Iris.SliderUDim2
         @tag Widget
@@ -1522,9 +1522,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderUDim2 = wrapper("SliderUDim2")
+    Iris.SliderUDim2 = wrapper("SliderUDim2")
 
-	--[=[
+    --[=[
         @within Slider
         @prop SliderRect Iris.SliderRect
         @tag Widget
@@ -1553,19 +1553,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.SliderRect = wrapper("SliderRect")
+    Iris.SliderRect = wrapper("SliderRect")
 
-	--[[
+    --[[
         ----------------------------------
             [SECTION] Combo Widget API
         ----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Combo
         Combo Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Combo
         @prop Selectable Iris.Selectable
         @tag Widget
@@ -1596,9 +1596,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Selectable = wrapper("Selectable")
+    Iris.Selectable = wrapper("Selectable")
 
-	--[=[
+    --[=[
         @within Combo
         @prop Combo Iris.Combo
         @tag Widget
@@ -1628,9 +1628,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Combo = wrapper("Combo")
+    Iris.Combo = wrapper("Combo")
 
-	--[=[
+    --[=[
         @within Combo
         @prop ComboArray Iris.Combo
         @tag Widget
@@ -1662,24 +1662,24 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.ComboArray = function<T>(arguments: Types.WidgetArguments, states: Types.WidgetStates?, selectionArray: { T })
-		local defaultState
-		if states == nil then
-			defaultState = Iris.State(selectionArray[1])
-		else
-			defaultState = states
-		end
-		local thisWidget = Iris.Internal._Insert("Combo", arguments, defaultState)
-		local sharedIndex: Types.State<T> = thisWidget.state.index
-		for _, Selection in selectionArray do
-			Iris.Internal._Insert("Selectable", { Selection, Selection }, { index = sharedIndex } :: Types.States)
-		end
-		Iris.End()
+    Iris.ComboArray = function<T>(arguments: Types.WidgetArguments, states: Types.WidgetStates?, selectionArray: { T })
+        local defaultState
+        if states == nil then
+            defaultState = Iris.State(selectionArray[1])
+        else
+            defaultState = states
+        end
+        local thisWidget = Iris.Internal._Insert("Combo", arguments, defaultState)
+        local sharedIndex: Types.State<T> = thisWidget.state.index
+        for _, Selection in selectionArray do
+            Iris.Internal._Insert("Selectable", { Selection, Selection }, { index = sharedIndex } :: Types.States)
+        end
+        Iris.End()
 
-		return thisWidget
-	end
+        return thisWidget
+    end
 
-	--[=[
+    --[=[
         @within Combo
         @prop ComboEnum Iris.Combo
         @tag Widget
@@ -1711,24 +1711,24 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.ComboEnum = function(arguments: Types.WidgetArguments, states: Types.WidgetStates?, enumType: Enum)
-		local defaultState
-		if states == nil then
-			defaultState = Iris.State(enumType:GetEnumItems()[1])
-		else
-			defaultState = states
-		end
-		local thisWidget = Iris.Internal._Insert("Combo", arguments, defaultState)
-		local sharedIndex = thisWidget.state.index
-		for _, Selection in enumType:GetEnumItems() do
-			Iris.Internal._Insert("Selectable", { Selection.Name, Selection }, { index = sharedIndex } :: Types.States)
-		end
-		Iris.End()
+    Iris.ComboEnum = function(arguments: Types.WidgetArguments, states: Types.WidgetStates?, enumType: Enum)
+        local defaultState
+        if states == nil then
+            defaultState = Iris.State(enumType:GetEnumItems()[1])
+        else
+            defaultState = states
+        end
+        local thisWidget = Iris.Internal._Insert("Combo", arguments, defaultState)
+        local sharedIndex = thisWidget.state.index
+        for _, Selection in enumType:GetEnumItems() do
+            Iris.Internal._Insert("Selectable", { Selection.Name, Selection }, { index = sharedIndex } :: Types.States)
+        end
+        Iris.End()
 
-		return thisWidget
-	end
+        return thisWidget
+    end
 
-	--[=[
+    --[=[
         @private
         @within Slider
         @prop InputEnum Iris.InputEnum
@@ -1759,19 +1759,19 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.InputEnum = Iris.ComboEnum
+    Iris.InputEnum = Iris.ComboEnum
 
-	--[[
+    --[[
         ---------------------------------
             [SECTION] Plot Widget API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class Plot
         Plot Widget API
     ]=]
 
-	--[=[
+    --[=[
         @within Plot
         @prop ProgressBar Iris.ProgressBar
         @tag Widget
@@ -1795,9 +1795,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.ProgressBar = wrapper("ProgressBar")
+    Iris.ProgressBar = wrapper("ProgressBar")
 
-	--[=[
+    --[=[
         @within Plot
         @prop PlotLines Iris.PlotLines
         @tag Widget
@@ -1826,9 +1826,9 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.PlotLines = wrapper("PlotLines")
+    Iris.PlotLines = wrapper("PlotLines")
 
-	--[=[
+    --[=[
         @within Plot
         @prop PlotHistogram Iris.PlotHistogram
         @tag Widget
@@ -1859,17 +1859,17 @@ return function(Iris: Types.Iris)
         ```
     ]=]
 	Iris.PlotHistogram = wrapper("PlotHistogram")
-
+	
 	--[[
         ---------------------------------
             [SECTION] ImPlot Widgets API
         ---------------------------------
     ]]
-	--[=[
+    --[=[
         @class ImPlot
         Implot Widget API
     ]=]
-
+	
 	--[=[
         @within ImPlot
         @prop ImPlotGraph Iris.ImPlotGraph
@@ -1911,7 +1911,7 @@ return function(Iris: Types.Iris)
         ```
     ]=]
 	Iris.ImPlotGraph = wrapper("ImPlotGraph")
-
+	
 	--[=[
         @within ImPlot
         @prop ImPlotPieChart Iris.ImPlotPieChart
@@ -1935,14 +1935,12 @@ return function(Iris: Types.Iris)
     ]=]
 	Iris.ImPlotPieChart = wrapper("ImPlotPieChart")
 
-	-- END IMPLOT SECTION
-
-	--[[
+    --[[
         ----------------------------------
             [SECTION] Table Widget API
         ----------------------------------
     ]]
-	--[=[
+    --[=[
         @class Table
         Table Widget API
 
@@ -1971,7 +1969,7 @@ return function(Iris: Types.Iris)
         ```
     ]=]
 
-	--[=[
+    --[=[
         @within Table
         @prop Table Iris.Table
         @tag Widget
@@ -2036,44 +2034,44 @@ return function(Iris: Types.Iris)
         }
         ```
     ]=]
-	Iris.Table = wrapper("Table")
+    Iris.Table = wrapper("Table")
 
-	--[=[
+    --[=[
         @within Table
         @function NextColumn
         
         In a table, moves to the next available cell. If the current cell is in the last column,
         then moves to the cell in the first column of the next row.
     ]=]
-	Iris.NextColumn = function(): number
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.NextColumn() can only called when directly within a table.")
+    Iris.NextColumn = function(): number
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.NextColumn() can only called when directly within a table.")
 
-		local columnIndex = Table._columnIndex
-		if columnIndex == Table.arguments.NumColumns then
-			Table._columnIndex = 1
-			Table._rowIndex += 1
-		else
-			Table._columnIndex += 1
-		end
-		return Table._columnIndex
-	end
+        local columnIndex = Table._columnIndex
+        if columnIndex == Table.arguments.NumColumns then
+            Table._columnIndex = 1
+            Table._rowIndex += 1
+        else
+            Table._columnIndex += 1
+        end
+        return Table._columnIndex
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function NextRow
         
         In a table, moves to the cell in the first column of the next row.
     ]=]
-	Iris.NextRow = function(): number
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.NextRow() can only called when directly within a table.")
-		Table._columnIndex = 1
-		Table._rowIndex += 1
-		return Table._rowIndex
-	end
+    Iris.NextRow = function(): number
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.NextRow() can only called when directly within a table.")
+        Table._columnIndex = 1
+        Table._rowIndex += 1
+        return Table._rowIndex
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function SetColumnIndex
         @param index number
@@ -2082,48 +2080,45 @@ return function(Iris: Types.Iris)
 
         Will erorr if the given index is not in the range of 1 to NumColumns.
     ]=]
-	Iris.SetColumnIndex = function(index: number): ()
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.SetColumnIndex() can only called when directly within a table.")
-		assert(
-			(index >= 1) and (index <= Table.arguments.NumColumns),
-			`The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`
-		)
-		Table._columnIndex = index
-	end
+    Iris.SetColumnIndex = function(index: number): ()
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.SetColumnIndex() can only called when directly within a table.")
+        assert((index >= 1) and (index <= Table.arguments.NumColumns), `The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`)
+        Table._columnIndex = index
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function SetRowIndex
         @param index number
 
         In a table, moves to the cell in the given row with the same previous column.
     ]=]
-	Iris.SetRowIndex = function(index: number): ()
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.SetRowIndex() can only called when directly within a table.")
-		assert(index >= 1, "The index must be greater or equal to 1.")
-		Table._rowIndex = index
-	end
+    Iris.SetRowIndex = function(index: number): ()
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.SetRowIndex() can only called when directly within a table.")
+        assert(index >= 1, "The index must be greater or equal to 1.")
+        Table._rowIndex = index
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function NextHeaderColumn
 
         In a table, moves to the cell in the next column in the header row (row index 0). Will loop around
         from the last column to the first.
     ]=]
-	Iris.NextHeaderColumn = function(): number
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.NextHeaderColumn() can only called when directly within a table.")
+    Iris.NextHeaderColumn = function(): number
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.NextHeaderColumn() can only called when directly within a table.")
 
-		Table._rowIndex = 0
-		Table._columnIndex = (Table._columnIndex % Table.arguments.NumColumns) + 1
+        Table._rowIndex = 0
+        Table._columnIndex = (Table._columnIndex % Table.arguments.NumColumns) + 1
 
-		return Table._columnIndex
-	end
+        return Table._columnIndex
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function SetHeaderColumnIndex
         @param index number
@@ -2132,19 +2127,16 @@ return function(Iris: Types.Iris)
 
         Will erorr if the given index is not in the range of 1 to NumColumns.
     ]=]
-	Iris.SetHeaderColumnIndex = function(index: number): ()
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.SetHeaderColumnIndex() can only called when directly within a table.")
-		assert(
-			(index >= 1) and (index <= Table.arguments.NumColumns),
-			`The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`
-		)
+    Iris.SetHeaderColumnIndex = function(index: number): ()
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.SetHeaderColumnIndex() can only called when directly within a table.")
+        assert((index >= 1) and (index <= Table.arguments.NumColumns), `The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`)
 
-		Table._rowIndex = 0
-		Table._columnIndex = index
-	end
+        Table._rowIndex = 0
+        Table._columnIndex = index
+    end
 
-	--[=[
+    --[=[
         @within Table
         @function SetColumnWidth
         @param index number
@@ -2156,16 +2148,13 @@ return function(Iris: Types.Iris)
 
         Will erorr if the given index is not in the range of 1 to NumColumns.
     ]=]
-	Iris.SetColumnWidth = function(index: number, width: number): ()
-		local Table = Iris.Internal._GetParentWidget() :: Types.Table
-		assert(Table ~= nil, "Iris.SetColumnWidth() can only called when directly within a table.")
-		assert(
-			(index >= 1) and (index <= Table.arguments.NumColumns),
-			`The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`
-		)
+    Iris.SetColumnWidth = function(index: number, width: number): ()
+        local Table = Iris.Internal._GetParentWidget() :: Types.Table
+        assert(Table ~= nil, "Iris.SetColumnWidth() can only called when directly within a table.")
+        assert((index >= 1) and (index <= Table.arguments.NumColumns), `The index must be between 1 and {Table.arguments.NumColumns}, inclusive.`)
 
-		local oldValue = Table.state.widths.value[index]
-		Table.state.widths.value[index] = width
-		Table.state.widths:set(Table.state.widths.value, width ~= oldValue)
-	end
+        local oldValue = Table.state.widths.value[index]
+        Table.state.widths.value[index] = width
+        Table.state.widths:set(Table.state.widths.value, width ~= oldValue)
+    end
 end

@@ -1,547 +1,692 @@
---!strict
-local floor = math.floor
-local huge = math.huge
-local map = math.map
-
-local RunService = game:GetService("RunService")
-
-local WidgetTypes = require("../WidgetTypes")
-local IrisTypes = require("../Types")
-
-local MeterTape = require("@self/Plots/Graph/MeterTape")
-local PieChart = require("@self/Plots/PieChart")
-local Graph = require("@self/Plots/Graph")
-local Util = require("@self/Util")
-
-local GRID_FLOOR_TRANSPARENCY = 0.7
-local GRID_LINES_TRANSPARENCY = 0.9
-
-return function(Iris: IrisTypes.Internal, widgets: IrisTypes.WidgetUtility)
-	local function NewText(Parent: Instance, MinTextSize: number, MaxTextSize: number)
-		local Label = Instance.new("TextLabel")
-
-		Label.Parent = Parent
-
-		Label.BackgroundTransparency = 1
-
-		Label.TextColor3 = Iris._config.TextColor
-		Label.FontFace = Iris._config.TextFont
-
-		Label.TextScaled = true
-
-		local constraint = Instance.new("UITextSizeConstraint")
-
-		constraint.Parent = Label
-		constraint.MinTextSize = MinTextSize or 0
-		constraint.MaxTextSize = MaxTextSize or huge
-
-		return Label
-	end
-
-	Iris.WidgetConstructor(
-		"ImPlotPieChart",
-		{
-			hasState = true,
-			hasChildren = false,
-			Args = {
-				["pieData"] = 1,
-			},
-			Events = {},
-			Generate = function(thisWidget: WidgetTypes.ImPlotPieChart)
-				local background = Instance.new("Frame")
-				background.Name = "Iris_PieChart"
-
-				background.Size = UDim2.fromOffset(250, 250)
-				background.BackgroundColor3 = Iris._config.FrameBgColor
-				background.Transparency = Iris._config.FrameBgTransparency
-				background.AutomaticSize = Enum.AutomaticSize.None
-				background.ClipsDescendants = true
-				background.ZIndex = thisWidget.ZIndex
-				background.LayoutOrder = thisWidget.ZIndex
-
-				widgets.applyFrameStyle(background)
-
-				local pie_viewport = Instance.new("CanvasGroup")
-				pie_viewport.Name = "Viewport"
-				pie_viewport.Size = UDim2.fromOffset(250 - 15, 250 - 15)
-				pie_viewport.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-				pie_viewport.AnchorPoint = Vector2.one * 0.5
-				pie_viewport.Position = UDim2.fromScale(0.5, 0.5)
-				pie_viewport.Parent = background
-				widgets.applyFrameStyle(pie_viewport)
-
-				local chunk_data = Instance.new("Frame")
-				chunk_data.Name = "ChunkData"
-				chunk_data.AutomaticSize = Enum.AutomaticSize.XY
-				chunk_data.Position = UDim2.fromOffset(10, 10)
-				chunk_data.ClipsDescendants = true
-				chunk_data.Transparency = 0
-				chunk_data.Parent = pie_viewport
-				chunk_data.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-				chunk_data.BorderSizePixel = 0
-				chunk_data.ZIndex = 2
-
-				widgets.applyFrameStyle(chunk_data)
-				widgets.UIStroke(
-					chunk_data,
-					Iris._config.PopupBorderSize,
-					Iris._config.BorderActiveColor,
-					Iris._config.BorderActiveTransparency
-				)
-				widgets.UIPadding(chunk_data, Iris._config.WindowPadding)
-				if Iris._config.PopupRounding > 0 then
-					widgets.UICorner(chunk_data, Iris._config.PopupRounding)
-				end
-
-				local list_layout = Instance.new("UIListLayout")
-				list_layout.Parent = chunk_data
-
-				local pie_chart = PieChart.new({ { Value = 1 } })
-				pie_chart.Instance.Size = UDim2.fromOffset(250 - 30, 250 - 30)
-				pie_chart.Instance.Position = UDim2.fromScale(0.5, 0.5)
-				pie_chart.Instance.AnchorPoint = Vector2.one * 0.5
-				pie_chart.Instance.Parent = pie_viewport
-				widgets.applyFrameStyle(pie_chart.Instance)
-
-				thisWidget.ChunkDataContainer = chunk_data
-				thisWidget.PieChart = pie_chart
-				thisWidget.Instance = background
-
-				return background
-			end,
-			GenerateState = function(thisWidget: WidgetTypes.ImPlotPieChart)
-				if not thisWidget.state.showPieData then
-					thisWidget.state.showPieData = Iris._widgetState(thisWidget, "showPieData", true)
-				end
-				if not thisWidget.state.normalize then
-					thisWidget.state.normalize = Iris._widgetState(thisWidget, "normalize", true)
-				end
-			end,
-
-			UpdateState = function(thisWidget: WidgetTypes.ImPlotPieChart)
-				thisWidget.ChunkDataContainer.Visible = thisWidget.state.showPieData:get()
-				thisWidget.PieChart.Normalize = thisWidget.state.normalize:get()
-				thisWidget.PieChart:_update()
-			end,
-			Update = function(thisWidget: WidgetTypes.ImPlotPieChart)
-				thisWidget.PieChart:SetPieData(thisWidget.arguments.pieData)
-
-				for _, v in ipairs(thisWidget.ChunkDataContainer:GetChildren()) do
-					if not v:IsA("Frame") then
-						continue
-					end
-					v:Destroy()
-				end
-
-				for _, chunk: PieChart.Chunk & { Name: string } in thisWidget.PieChart._plot_data do
-					local index_frame = Instance.new("Frame")
-					index_frame.AutomaticSize = Enum.AutomaticSize.XY
-					index_frame.Parent = thisWidget.ChunkDataContainer
-					index_frame.BackgroundTransparency = 1
-					index_frame.Size = UDim2.fromScale(0, 0)
-
-					local list_layout = Instance.new("UIListLayout")
-					list_layout.Parent = index_frame
-					list_layout.FillDirection = Enum.FillDirection.Horizontal
-					list_layout.Padding = UDim.new(0, 5)
-					list_layout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-					local label = Instance.new("TextLabel")
-					label.Text = chunk.Name
-					label.Parent = index_frame
-					label.AutomaticSize = Enum.AutomaticSize.XY
-					label.Size = UDim2.fromOffset(0, 0)
-					label.BackgroundTransparency = 1
-					label.LayoutOrder = 2
-
-					local colour_frame = Instance.new("Frame")
-					colour_frame.Size = UDim2.fromOffset(index_frame.AbsoluteSize.Y - 2, index_frame.AbsoluteSize.Y - 2)
-					colour_frame.BackgroundColor3 = chunk.Color or Util.RandomColor()
-					colour_frame.Parent = index_frame
-
-					widgets.applyTextStyle(label)
-				end
-			end,
-
-			Discard = function(thisWidget: WidgetTypes.ImPlotPieChart)
-				thisWidget.PieChart:Destroy()
-				thisWidget.Instance:Destroy()
-			end,
-		} :: IrisTypes.WidgetClass
-	)
-
-	Iris.WidgetConstructor(
-		"ImPlotGraph",
-		{
-			hasState = true,
-			hasChildren = false,
-			Args = {
-				["GraphName"] = 1,
-				["Axes"] = 2,
-			},
-			Events = {},
-			Generate = function(thisWidget: WidgetTypes.ImPlotGraph)
-				---------------------------
-				--// Background
-				---------------------------
-				local background = Instance.new("Frame")
-				background.Name = "Iris_Graph"
-
-				background.Size = UDim2.fromOffset(400, 250)
-				background.BackgroundColor3 = Iris._config.FrameBgColor
-				background.Transparency = Iris._config.FrameBgTransparency
-				background.AutomaticSize = Enum.AutomaticSize.None
-				background.ClipsDescendants = true
-				background.ZIndex = thisWidget.ZIndex
-				background.LayoutOrder = thisWidget.ZIndex
-
-				widgets.applyFrameStyle(background)
-
-				---------------------------
-				--// Graph Viewport
-				---------------------------
-				local graph_viewport = Instance.new("CanvasGroup")
-
-				graph_viewport.Name = "Iris_Graph_GraphViewport"
-
-				graph_viewport.AnchorPoint = Vector2.new(1, 0.5)
-				graph_viewport.Position = UDim2.fromScale(1, 0.5)
-				graph_viewport.Size = UDim2.fromScale(1, 1) - UDim2.fromOffset(30, 60)
-
-				graph_viewport.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- = Color3.fromRGB(18, 20, 18) --Iris._config.FrameBgColor
-				graph_viewport.Transparency = 0 --Iris._config.FrameBgTransparency
-				graph_viewport.AutomaticSize = Enum.AutomaticSize.None
-				graph_viewport.ClipsDescendants = true
-
-				graph_viewport.Parent = background
-
-				local ui_stroke = Instance.new("UIStroke")
-				ui_stroke.Parent = graph_viewport
-				ui_stroke.Color = Iris._config.BorderColor
-				ui_stroke.Thickness = 1.5
-
-				widgets.applyFrameStyle(graph_viewport)
-
-				---------------------------
-				--// Grid
-				---------------------------
-				local floor_bar_horizontal = Instance.new("ImageLabel")
-				floor_bar_horizontal.Image = "rbxassetid://79263528871042"
-				floor_bar_horizontal.TileSize = UDim2.fromOffset(40, 5)
-				floor_bar_horizontal.ResampleMode = Enum.ResamplerMode.Pixelated
-				floor_bar_horizontal.ScaleType = Enum.ScaleType.Tile
-
-				floor_bar_horizontal.ImageTransparency = GRID_FLOOR_TRANSPARENCY
-
-				floor_bar_horizontal.Size = UDim2.new(1, 0, 0, 5)
-				floor_bar_horizontal.BackgroundTransparency = 1
-
-				floor_bar_horizontal.AnchorPoint = Vector2.new(0, 0)
-				floor_bar_horizontal.Position = UDim2.new(0, 0, 1, 1)
-
-				floor_bar_horizontal.Parent = graph_viewport
-
-				local floor_bar_vertical = Instance.fromExisting(floor_bar_horizontal)
-				floor_bar_vertical.Image = "rbxassetid://103310049375227"
-				floor_bar_vertical.TileSize = UDim2.fromOffset(5, 40)
-
-				floor_bar_vertical.Size = UDim2.new(0, 5, 1, 0)
-
-				floor_bar_vertical.AnchorPoint = Vector2.new(1, 0)
-				floor_bar_vertical.Position = UDim2.fromOffset(-2, 0)
-
-				floor_bar_vertical.Parent = graph_viewport
-
-				local grid = Instance.new("ImageLabel")
-				grid.Image = "rbxassetid://137361458622651"
-				grid.ImageTransparency = GRID_LINES_TRANSPARENCY
-
-				grid.ResampleMode = Enum.ResamplerMode.Pixelated
-				grid.ScaleType = Enum.ScaleType.Tile
-				grid.TileSize = UDim2.fromOffset(40, 40)
-				grid.Size = UDim2.new(1, 0, 1, 0)
-				grid.BackgroundTransparency = 1
-
-				grid.AnchorPoint = Vector2.new(0.5, 0.5)
-				grid.Position = UDim2.fromScale(0.5, 0.5)
-
-				grid.Parent = graph_viewport
-
-				---------------------------
-				--// Graph
-				---------------------------
-				local graph = Graph.new()
-				local graph_container = graph.Canvas
-				graph_container.Name = "Iris_Graph_GraphContainer"
-
-				graph_container.AnchorPoint = Vector2.new(0.5, 0.5)
-				graph_container.Size = UDim2.fromScale(1, 1)
-				graph_container.Position = UDim2.fromScale(0.5, 0.5)
-
-				graph_container.BackgroundColor3 = Iris._config.FrameBgColor
-				graph_container.Transparency = 1 --Iris._config.FrameBgTransparency
-				graph_container.AutomaticSize = Enum.AutomaticSize.X
-				graph_container.BorderSizePixel = 0
-				graph_container.ClipsDescendants = true
-				graph_container.ZIndex = 2
-
-				graph_container.Parent = graph_viewport
-
-				---------------------------
-				--// X/Y Rulers
-				---------------------------
-				local x_meter_tape = MeterTape.new("X", false, 40, UDim2.fromOffset(22, 0), function()
-					local label = NewText(nil :: any, 7, 12)
-					label.AnchorPoint = Vector2.new(0.5, 0)
-					return label
-				end)
-				local x_bar = x_meter_tape.Instance
-				x_bar.Size = UDim2.new(1, -40, 0, 50)
-				x_bar.Position = UDim2.fromScale(0, 1) + UDim2.fromOffset(35, -45)
-				x_bar.Parent = background
-
-				x_bar.BackgroundColor3 = Iris._config.FrameBgColor
-				x_bar.Transparency = 1
-				x_bar.AutomaticSize = Enum.AutomaticSize.None
-				x_bar.ClipsDescendants = true
-
-				local y_meter_tape = MeterTape.new("Y", true, 40, UDim2.new(0, 15, 0, 40), function()
-					local label = NewText(nil :: any, 7, 12)
-					label.AnchorPoint = Vector2.new(0.5, 0.5)
-					return label
-				end)
-				local y_bar = y_meter_tape.Instance
-				y_bar.Size = UDim2.new(0, 50, 1, -50)
-				y_bar.Position = UDim2.fromScale(0, 0.5) + UDim2.fromOffset(50, -10)
-				y_bar.AnchorPoint = Vector2.new(1, 0.5)
-				y_bar.Parent = background
-
-				y_bar.BackgroundColor3 = Iris._config.FrameBgColor
-				y_bar.Transparency = 1
-				y_bar.AutomaticSize = Enum.AutomaticSize.None
-				y_bar.ClipsDescendants = true
-
-				---------------------------
-				--// Tooltip
-				---------------------------
-				local tooltip = Instance.new("TextLabel")
-				tooltip.Name = "Iris_Tooltip"
-				tooltip.AutomaticSize = Enum.AutomaticSize.XY
-				tooltip.BackgroundColor3 = Iris._config.PopupBgColor
-				tooltip.BackgroundTransparency = Iris._config.PopupBgTransparency
-				tooltip.BorderSizePixel = 0
-				tooltip.ZIndex = 4
-				tooltip.Visible = false
-
-				widgets.applyTextStyle(tooltip)
-				widgets.UIStroke(
-					tooltip,
-					Iris._config.PopupBorderSize,
-					Iris._config.BorderActiveColor,
-					Iris._config.BorderActiveTransparency
-				)
-				widgets.UIPadding(tooltip, Iris._config.WindowPadding)
-				if Iris._config.PopupRounding > 0 then
-					widgets.UICorner(tooltip, Iris._config.PopupRounding)
-				end
-
-				local popup = Iris._rootInstance and Iris._rootInstance:FindFirstChild("PopupScreenGui")
-				tooltip.Parent = popup and popup:FindFirstChild("TooltipContainer")
-
-				local runtime_connection = nil
-
-				widgets.applyMouseEnter(graph_viewport, function()
-					if runtime_connection then
-						runtime_connection:Disconnect()
-					end
-
-					runtime_connection = RunService.Heartbeat:Connect(function()
-						local mouse_pos = widgets.getMouseLocation()
-						local relative_mouse_pos = (
-							Vector2.new(mouse_pos.X, mouse_pos.Y)
-							+ widgets.GuiOffset
-							- graph_viewport.AbsolutePosition
-						) / graph_viewport.AbsoluteSize
-
-						local x_value =
-							map(relative_mouse_pos.X * graph.XScale, 0, 1, graph.Range.MinX, graph.Range.MaxX)
-						local y_value =
-							map(1 - relative_mouse_pos.Y * graph.YScale, 0, 1, graph.Range.MinY, graph.Range.MaxY)
-
-						tooltip.Text = string.format("X: %f, Y: %f", x_value, y_value)
-					end)
-
-					tooltip.Visible = true
-				end)
-				widgets.applyMouseLeave(graph_viewport, function()
-					if runtime_connection then
-						runtime_connection:Disconnect()
-					end
-
-					tooltip.Visible = false
-				end)
-
-				---------------------------
-				--// Data Information
-				---------------------------
-				local data_information = Instance.new("Frame")
-				data_information.Name = "ChunkData"
-				data_information.AutomaticSize = Enum.AutomaticSize.XY
-				data_information.Position = UDim2.fromOffset(10, 10)
-				data_information.ClipsDescendants = true
-				data_information.Transparency = 0
-				data_information.Parent = graph_viewport
-				data_information.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-				data_information.BorderSizePixel = 0
-				data_information.ZIndex = 3
-
-				widgets.applyFrameStyle(data_information)
-				widgets.UIStroke(
-					data_information,
-					Iris._config.PopupBorderSize,
-					Iris._config.BorderActiveColor,
-					Iris._config.BorderActiveTransparency
-				)
-				widgets.UIPadding(data_information, Iris._config.WindowPadding)
-				if Iris._config.PopupRounding > 0 then
-					widgets.UICorner(data_information, Iris._config.PopupRounding)
-				end
-
-				local list_layout = Instance.new("UIListLayout")
-				list_layout.Parent = data_information
-
-				thisWidget.DataInformation = data_information
-
-				---------------------------
-				--// Axes Display
-				---------------------------
-				local x_label = NewText(background, 0, 10)
-				x_label.Size = UDim2.fromScale(1, 0) + UDim2.fromOffset(0, 30)
-				x_label.Position = UDim2.fromScale(0.5, 1) + UDim2.fromOffset(15, -20)
-				x_label.AnchorPoint = Vector2.new(0.5, 0)
-
-				x_label.Name = "X"
-				x_label.Text = "X"
-
-				local y_label = NewText(background, 0, 10)
-				y_label.Size = UDim2.fromScale(1, 0) + UDim2.fromOffset(0, 30)
-				y_label.Position = UDim2.fromScale(0, 0.5) + UDim2.fromOffset(0, 0)
-				y_label.AnchorPoint = Vector2.new(0.5, 0.5)
-				y_label.Rotation = -90
-
-				y_label.Name = "Y"
-				y_label.Text = "Y"
-
-				---------------------------
-				--// Chart Window Name
-				---------------------------
-				local name_label = NewText(background, 0, 12)
-				name_label.Size = UDim2.new(1, 0, 0, 30)
-				name_label.Position = UDim2.fromScale(0.5, 0) + UDim2.fromOffset(15, 10)
-				name_label.AnchorPoint = Vector2.new(0.5, 0.5)
-
-				name_label.Name = "NameLabel"
-				name_label.Text = "Nil"
-
-				thisWidget.Graph = graph
-				thisWidget.XMeterTape = x_meter_tape
-				thisWidget.YMeterTape = y_meter_tape
-
-				thisWidget.NameLabel = name_label
-				thisWidget.XLabel = x_label
-				thisWidget.YLabel = y_label
-
-				return background
-			end,
-			GenerateState = function(thisWidget: WidgetTypes.ImPlotGraph)
-				if not thisWidget.state.plots then
-					thisWidget.state.plots = Iris._widgetState(thisWidget, "plots", {})
-				end
-				if not thisWidget.state.size then
-					thisWidget.state.size = Iris._widgetState(thisWidget, "size", Vector2.new(400, 250))
-				end
-				if not thisWidget.state.showDataInformation then
-					thisWidget.state.showDataInformation = Iris._widgetState(thisWidget, "showDataInformation", {})
-				end
-			end,
-
-			Update = function(thisWidget: WidgetTypes.ImPlotGraph)
-				thisWidget.NameLabel.Text = thisWidget.arguments.GraphName or ""
-
-				thisWidget.XLabel.Text = thisWidget.arguments.Axes.X or "X"
-				thisWidget.YLabel.Text = thisWidget.arguments.Axes.Y or "Y"
-
-				thisWidget.Graph.XScale = thisWidget.arguments.Axes.XScale or 1
-				thisWidget.Graph.YScale = thisWidget.arguments.Axes.YScale or 0.9
-			end,
-			UpdateState = function(thisWidget: WidgetTypes.ImPlotGraph)
-				local plots = thisWidget.state.plots.value
-
-				thisWidget.Graph:SetChartData(plots)
-
-				thisWidget.XMeterTape:Update()
-				thisWidget.YMeterTape:Update()
-
-				thisWidget.XMeterTape.Range = NumberRange.new(thisWidget.Graph.Range.MinX, thisWidget.Graph.Range.MaxX)
-				thisWidget.YMeterTape.Range = NumberRange.new(thisWidget.Graph.Range.MinY, thisWidget.Graph.Range.MaxY)
-
-				thisWidget.Instance.Size =
-					UDim2.fromOffset(thisWidget.state.size.value.X, thisWidget.state.size.value.Y)
-
-				thisWidget.DataInformation.Visible = thisWidget.state.showDataInformation.value
-				if not thisWidget.DataInformation.Visible then
-					return
-				end
-
-				for _, v in ipairs(thisWidget.DataInformation:GetChildren()) do
-					if not v:IsA("Frame") then
-						continue
-					end
-					v:Destroy()
-				end
-
-				for _, graph in ipairs(plots) do
-					if not graph.Name then
-						continue
-					end
-
-					local index_frame = Instance.new("Frame")
-					index_frame.AutomaticSize = Enum.AutomaticSize.XY
-					index_frame.Parent = thisWidget.DataInformation
-					index_frame.BackgroundTransparency = 1
-					index_frame.Size = UDim2.fromScale(0, 0)
-
-					local list_layout = Instance.new("UIListLayout")
-					list_layout.Parent = index_frame
-					list_layout.FillDirection = Enum.FillDirection.Horizontal
-					list_layout.Padding = UDim.new(0, 5)
-					list_layout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-					local label = Instance.new("TextLabel")
-					label.Text = graph.Name
-					label.Parent = index_frame
-					label.AutomaticSize = Enum.AutomaticSize.XY
-					label.Size = UDim2.fromOffset(0, 0)
-					label.BackgroundTransparency = 1
-					label.LayoutOrder = 2
-
-					local color_frame = Instance.new("Frame")
-					color_frame.Size = UDim2.fromOffset(index_frame.AbsoluteSize.Y - 2, index_frame.AbsoluteSize.Y - 2)
-					color_frame.BackgroundColor3 = (graph.GraphStyle and graph.GraphStyle.Color)
-						or (graph.MarkerStyle and graph.MarkerStyle.Color)
-						or Color3.new(1, 1, 1)
-					color_frame.Parent = index_frame
-
-					widgets.applyTextStyle(label)
-				end
-			end,
-
-			Discard = function(thisWidget: WidgetTypes.ImPlotGraph)
-				thisWidget.Graph:Destroy()
-				thisWidget.XMeterTape:Destroy()
-				thisWidget.YMeterTape:Destroy()
-				thisWidget.Instance:Destroy()
-			end,
-		} :: IrisTypes.WidgetClass
-	)
+--!optimize 2
+local Types = require(script.Types)
+
+--[=[
+    @class Iris
+
+    Iris; contains the all user-facing functions and properties.
+    A set of internal functions can be found in `Iris.Internal` (only use if you understand).
+
+    In its simplest form, users may start Iris by using
+    ```lua
+    Iris.Init()
+
+    Iris:Connect(function()
+        Iris.Window({"My First Window!"})
+            Iris.Text({"Hello, World"})
+            Iris.Button({"Save"})
+            Iris.InputNum({"Input"})
+        Iris.End()
+    end)
+    ```
+]=]
+local Iris = {} :: Types.Iris
+
+local Internal: Types.Internal = require(script.Internal)(Iris)
+
+--[=[
+    @within Iris
+    @prop Disabled boolean
+
+    While Iris.Disabled is true, execution of Iris and connected functions will be paused.
+    The widgets are not destroyed, they are just frozen so no changes will happen to them.
+]=]
+Iris.Disabled = false
+
+--[=[
+    @within Iris
+    @prop Args { [string]: { [string]: any } }
+
+    Provides a list of every possible Argument for each type of widget to it's index.
+    For instance, `Iris.Args.Window.NoResize`.
+    The Args table is useful for using widget Arguments without remembering their order.
+    ```lua
+    Iris.Window({"My Window", [Iris.Args.Window.NoResize] = true})
+    ```
+]=]
+Iris.Args = {}
+
+--[=[
+    @ignore
+    @within Iris
+    @prop Events table
+
+    -todo: work out what this is used for.
+]=]
+Iris.Events = {}
+
+--[=[
+    @within Iris
+    @function Init
+    @param parentInstance Instance? -- where Iris will place widgets UIs under, defaulting to [PlayerGui]
+    @param eventConnection (RBXScriptSignal | () -> () | false)? -- the event to determine an Iris cycle, defaulting to [Heartbeat]
+    @param allowMultipleInits boolean? -- allows subsequent calls 'Iris.Init()' to do nothing rather than error about initialising again, defaulting to false
+    @return Iris
+
+    Initializes Iris and begins rendering. Can only be called once.
+    See [Iris.Shutdown] to stop Iris, or [Iris.Disabled] to temporarily disable Iris.
+
+    Once initialized, [Iris:Connect] can be used to create a widget.
+
+    If the `eventConnection` is `false` then Iris will not create a cycle loop and the user will need to call [Internal._cycle] every frame.
+]=]
+function Iris.Init(parentInstance: Instance?, eventConnection: (RBXScriptSignal | (() -> number) | false)?, allowMultipleInits: boolean): Types.Iris
+    assert(Internal._shutdown == false, "Iris.Init() cannot be called once shutdown.")
+    assert(Internal._started == false or allowMultipleInits == true, "Iris.Init() can only be called once.")
+
+    if Internal._started then
+        return Iris
+    end
+
+    if parentInstance == nil then
+        -- coalesce to playerGui
+        parentInstance = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    end
+    if eventConnection == nil then
+        -- coalesce to Heartbeat
+        eventConnection = game:GetService("RunService").Heartbeat
+    end
+    Internal.parentInstance = parentInstance :: Instance
+    Internal._started = true
+
+    Internal._generateRootInstance()
+    Internal._generateSelectionImageObject()
+
+    for _, callback: () -> () in Internal._initFunctions do
+        callback()
+    end
+
+    -- spawns the connection to call `Internal._cycle()` within.
+    task.spawn(function()
+        if typeof(eventConnection) == "function" then
+            while Internal._started do
+                local deltaTime: number = eventConnection()
+                Internal._cycle(deltaTime)
+            end
+        elseif eventConnection ~= nil and eventConnection ~= false then
+            Internal._eventConnection = eventConnection:Connect(function(...)
+                Internal._cycle(...)
+            end)
+        end
+    end)
+
+    return Iris
 end
+
+--[=[
+    @within Iris
+    @function Shutdown
+
+    Shuts Iris down. This can only be called once, and Iris cannot be started once shut down.
+]=]
+function Iris.Shutdown()
+    Internal._started = false
+    Internal._shutdown = true
+
+    if Internal._eventConnection then
+        Internal._eventConnection:Disconnect()
+    end
+    Internal._eventConnection = nil
+
+    if Internal._rootWidget then
+        if Internal._rootWidget.Instance then
+            Internal._widgets["Root"].Discard(Internal._rootWidget)
+        end
+        Internal._rootInstance = nil
+    end
+
+    if Internal.SelectionImageObject then
+        Internal.SelectionImageObject:Destroy()
+    end
+
+    for _, connection: RBXScriptConnection in Internal._connections do
+        connection:Disconnect()
+    end
+end
+
+--[=[
+    @within Iris
+    @method Connect
+    @param callback () -> () -- the callback containg the Iris code
+    @return () -> () -- call to disconnect it
+
+    Connects a function which will execute every Iris cycle. [Iris.Init] must be called before connecting.
+
+    A cycle is determined by the `eventConnection` passed to [Iris.Init] (default to [RunService.Heartbeat]).
+
+    Multiple callbacks can be added to Iris from many different scripts or modules.
+]=]
+function Iris:Connect(callback: () -> ()): () -> () -- this uses method syntax for no reason.
+    if Internal._started == false then
+        warn("Iris:Connect() was called before calling Iris.Init(); always initialise Iris first.")
+    end
+    local connectionIndex: number = #Internal._connectedFunctions + 1
+    Internal._connectedFunctions[connectionIndex] = callback
+    return function()
+        Internal._connectedFunctions[connectionIndex] = nil
+    end
+end
+
+--[=[
+    @within Iris
+    @function Append
+    @param userInstance GuiObject -- the Roblox [Instance] to insert into Iris
+
+    Inserts any Roblox [Instance] into Iris.
+
+    The parent of the inserted instance can either be determined by the `_config.Parent`
+    property or by the current parent widget from the stack.
+]=]
+function Iris.Append(userInstance: GuiObject)
+    local parentWidget: Types.ParentWidget = Internal._GetParentWidget()
+    local widgetInstanceParent: GuiObject
+    if Internal._config.Parent then
+        widgetInstanceParent = Internal._config.Parent :: any
+    else
+        widgetInstanceParent = Internal._widgets[parentWidget.type].ChildAdded(parentWidget, { type = "userInstance" } :: Types.Widget)
+    end
+    userInstance.Parent = widgetInstanceParent
+end
+
+--[=[
+    @within Iris
+    @function End
+
+    Marks the end of any widgets which contain children. For example:
+    ```lua
+    -- Widgets placed here **will not** be inside the tree
+    Iris.Text({"Above and outside the tree"})
+
+    -- A Tree widget can contain children.
+    -- We must therefore remember to call `Iris.End()`
+    Iris.Tree({"My First Tree"})
+        -- Widgets placed here **will** be inside the tree
+        Iris.Text({"Tree item 1"})
+        Iris.Text({"Tree item 2"})
+    Iris.End()
+
+    -- Widgets placed here **will not** be inside the tree
+    Iris.Text({"Below and outside the tree"})
+    ```
+    :::caution Caution: Error
+    Seeing the error `Callback has too few calls to Iris.End()` or `Callback has too many calls to Iris.End()`?
+    Using the wrong amount of `Iris.End()` calls in your code will lead to an error.
+
+    Each widget called which might have children should be paired with a call to `Iris.End()`, **even if the Widget doesnt currently have any children**.
+    :::
+]=]
+function Iris.End()
+    if Internal._stackIndex == 1 then
+        error("Too many calls to Iris.End().", 2)
+    end
+
+    Internal._IDStack[Internal._stackIndex] = nil
+    Internal._stackIndex -= 1
+end
+
+--[[
+    ------------------------
+        [SECTION] Config
+    ------------------------
+]]
+
+--[=[
+    @within Iris
+    @function ForceRefresh
+
+    Destroys and regenerates all instances used by Iris. Useful if you want to propogate state changes.
+    :::caution Caution: Performance
+    Because this function Deletes and Initializes many instances, it may cause **performance issues** when used with many widgets.
+    In **no** case should it be called every frame.
+    :::
+]=]
+function Iris.ForceRefresh()
+    Internal._globalRefreshRequested = true
+end
+
+--[=[
+    @within Iris
+    @function UpdateGlobalConfig
+    @param deltaStyle { [string]: any } -- a table containing the changes in style ex: `{ItemWidth = UDim.new(0, 100)}`
+
+    Customizes the configuration which **every** widget will inherit from.
+
+    It can be used along with [Iris.TemplateConfig] to easily swap styles, for example:
+    ```lua
+    Iris.UpdateGlobalConfig(Iris.TemplateConfig.colorLight) -- use light theme
+    ```
+    :::caution Caution: Performance
+    This function internally calls [Iris.ForceRefresh] so that style changes are propogated.
+
+    As such, it may cause **performance issues** when used with many widgets.
+    In **no** case should it be called every frame.
+    :::
+]=]
+function Iris.UpdateGlobalConfig(deltaStyle: { [string]: any })
+    for index, style in deltaStyle do
+        Internal._rootConfig[index] = style
+    end
+    Iris.ForceRefresh()
+end
+
+--[=[
+    @within Iris
+    @function PushConfig
+    @param deltaStyle { [string]: any } -- a table containing the changes in style ex: `{ItemWidth = UDim.new(0, 100)}`
+
+    Allows cascading of a style by allowing styles to be locally and hierarchically applied.
+
+    Each call to Iris.PushConfig must be paired with a call to [Iris.PopConfig], for example:
+    ```lua
+    Iris.Text({"boring text"})
+
+    Iris.PushConfig({TextColor = Color3.fromRGB(128, 0, 256)})
+        Iris.Text({"Colored Text!"})
+    Iris.PopConfig()
+
+    Iris.Text({"boring text"})
+    ```
+]=]
+function Iris.PushConfig(deltaStyle: { [string]: any })
+    local ID = Iris.State(-1)
+    if ID.value == -1 then
+        ID:set(deltaStyle)
+    else
+        -- compare tables
+        if Internal._deepCompare(ID:get(), deltaStyle) == false then
+            -- refresh local
+            ID:set(deltaStyle)
+            Internal._refreshStack[Internal._refreshLevel] = true
+            Internal._refreshCounter += 1
+        end
+    end
+    Internal._refreshLevel += 1
+
+    Internal._config = setmetatable(deltaStyle, {
+        __index = Internal._config,
+    }) :: any
+end
+
+--[=[
+    @within Iris
+    @function PopConfig
+
+    Ends a [Iris.PushConfig] style.
+
+    Each call to [Iris.PopConfig] should match a call to [Iris.PushConfig].
+]=]
+function Iris.PopConfig()
+    Internal._refreshLevel -= 1
+    if Internal._refreshStack[Internal._refreshLevel] == true then
+        Internal._refreshCounter -= 1
+        Internal._refreshStack[Internal._refreshLevel] = nil
+    end
+
+    Internal._config = getmetatable(Internal._config :: any).__index
+end
+
+--[=[
+
+    @within Iris
+    @prop TemplateConfig { [string]: { [string]: any } }
+
+    TemplateConfig provides a table of default styles and configurations which you may apply to your UI.
+]=]
+Iris.TemplateConfig = require(script.config)
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.colorDark) -- use colorDark and sizeDefault themes by default
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.sizeDefault)
+Iris.UpdateGlobalConfig(Iris.TemplateConfig.utilityDefault)
+Internal._globalRefreshRequested = false -- UpdatingGlobalConfig changes this to true, leads to Root being generated twice.
+
+--[[
+    --------------------
+        [SECTION] ID
+    --------------------
+]]
+
+--[=[
+    @within Iris
+    @function PushId
+    @param id ID -- custom id
+
+    Pushes an id onto the id stack for all future widgets. Use [Iris.PopId] to pop it off the stack.
+]=]
+function Iris.PushId(ID: Types.ID)
+    assert(typeof(ID) == "string", "The ID argument to Iris.PushId() to be a string.")
+
+    Internal._newID = true
+    table.insert(Internal._pushedIds, ID)
+end
+
+--[=[
+    @within Iris
+    @function PopID
+
+    Removes the most recent pushed id from the id stack.
+]=]
+function Iris.PopId()
+    if #Internal._pushedIds == 0 then
+        return
+    end
+
+    table.remove(Internal._pushedIds)
+end
+
+--[=[
+    @within Iris
+    @function SetNextWidgetID
+    @param id ID -- custom id.
+
+    Sets the id for the next widget. Useful for using [Iris.Append] on the same widget.
+    ```lua
+    Iris.SetNextWidgetId("demo_window")
+    Iris.Window({ "Window" })
+        Iris.Text({ "Text one placed here." })
+    Iris.End()
+
+    -- later in the code
+
+    Iris.SetNextWidgetId("demo_window")
+    Iris.Window()
+        Iris.Text({ "Text two placed here." })
+    Iris.End()
+
+    -- both text widgets will be placed under the same window despite being called separately.
+    ```
+]=]
+function Iris.SetNextWidgetID(ID: Types.ID)
+    Internal._nextWidgetId = ID
+end
+
+--[[
+    -----------------------
+        [SECTION] State
+    -----------------------
+]]
+
+--[=[
+    @within Iris
+    @function State<T>
+    @param initialValue T -- the initial value for the state
+    @return State<T>
+    @tag State
+
+    Constructs a new [State] object. Subsequent ID calls will return the same object.
+    :::info
+    Iris.State allows you to create "references" to the same value while inside your UI drawing loop.
+    For example:
+    ```lua
+    Iris:Connect(function()
+        local myNumber = 5
+        myNumber = myNumber + 1
+        Iris.Text({"The number is: " .. myNumber})
+    end)
+    ```
+    This is problematic. Each time the function is called, a new myNumber is initialized, instead of retrieving the old one.
+    The above code will always display 6.
+    ***
+    Iris.State solves this problem:
+    ```lua
+    Iris:Connect(function()
+        local myNumber = Iris.State(5)
+        myNumber:set(myNumber:get() + 1)
+        Iris.Text({"The number is: " .. myNumber})
+    end)
+    ```
+    In this example, the code will work properly, and increment every frame.
+    :::
+]=]
+function Iris.State<T>(initialValue: T): Types.State<T>
+    local ID: Types.ID = Internal._getID(2)
+    if Internal._states[ID] then
+        return Internal._states[ID]
+    end
+    Internal._states[ID] = {
+        ID = ID,
+        value = initialValue,
+        lastChangeTick = Iris.Internal._cycleTick,
+        ConnectedWidgets = {},
+        ConnectedFunctions = {},
+    } :: any
+    setmetatable(Internal._states[ID], Internal.StateClass)
+    return Internal._states[ID]
+end
+
+--[=[
+    @within Iris
+    @function WeakState<T>
+    @param initialValue T -- the initial value for the state
+    @return State<T>
+    @tag State
+
+    Constructs a new state object, subsequent ID calls will return the same object, except all widgets connected to the state are discarded, the state reverts to the passed initialValue
+]=]
+function Iris.WeakState<T>(initialValue: T): Types.State<T>
+    local ID: Types.ID = Internal._getID(2)
+    if Internal._states[ID] then
+        if next(Internal._states[ID].ConnectedWidgets) == nil then
+            Internal._states[ID] = nil
+        else
+            return Internal._states[ID]
+        end
+    end
+    Internal._states[ID] = {
+        ID = ID,
+        value = initialValue,
+        lastChangeTick = Iris.Internal._cycleTick,
+        ConnectedWidgets = {},
+        ConnectedFunctions = {},
+    } :: any
+    setmetatable(Internal._states[ID], Internal.StateClass)
+    return Internal._states[ID]
+end
+
+--[=[
+    @within Iris
+    @function VariableState<T>
+    @param variable T -- the variable to track
+    @param callback (T) -> () -- a function which sets the new variable locally
+    @return State<T>
+    @tag State
+
+    Returns a state object linked to a local variable.
+
+    The passed variable is used to check whether the state object should update. The callback method is used to change the local variable when the state changes.
+
+    The existence of such a function is to make working with local variables easier.
+    Since Iris cannot directly manipulate the memory of the variable, like in C++, it must instead rely on the user updating it through the callback provided.
+    Additionally, because the state value is not updated when created or called we cannot return the new value back, instead we require a callback for the user to update.
+
+    ```lua
+    local myNumber = 5
+
+    local state = Iris.VariableState(myNumber, function(value)
+        myNumber = value
+    end)
+    Iris.DragNum({ "My number" }, { number = state })
+    ```
+
+    This is how Dear ImGui does the same in C++ where we can just provide the memory location to the variable which is then updated directly.
+    ```cpp
+    static int myNumber = 5;
+    ImGui::DragInt("My number", &myNumber); // Here in C++, we can directly pass the variable.
+    ```
+
+    :::caution Caution: Update Order
+    If the variable and state value are different when calling this, the variable value takes precedence.
+
+    Therefore, if you update the state using `state.value = ...` then it will be overwritten by the variable value.
+    You must use `state:set(...)` if you want the variable to update to the state's value.
+    :::
+]=]
+function Iris.VariableState<T>(variable: T, callback: (T) -> ()): Types.State<T>
+    local ID: Types.ID = Internal._getID(2)
+    local state: Types.State<T>? = Internal._states[ID]
+
+    if state then
+        if variable ~= state.value then
+            state:set(variable)
+        end
+        return state
+    end
+
+    local newState = {
+        ID = ID,
+        value = variable,
+        lastChangeTick = Iris.Internal._cycleTick,
+        ConnectedWidgets = {},
+        ConnectedFunctions = {},
+    } :: Types.State<T>
+    setmetatable(newState, Internal.StateClass)
+    Internal._states[ID] = newState
+
+    newState:onChange(callback)
+
+    return newState
+end
+
+--[=[
+    @within Iris
+    @function TableState<K, V>
+    @param table { [K]: V } -- the table containing the value
+    @param key K -- the key to the value in table
+    @param callback ((newValue: V) -> false?)? -- a function called when the state is changed
+    @return State<V>
+    @tag State
+
+    Similar to Iris.VariableState but takes a table and key to modify a specific value and a callback to determine whether to update the value.
+
+    The passed table and key are used to check the value. The callback is called when the state changes value and determines whether we update the table.
+    This is useful if we want to monitor a table value which needs to call other functions when changed.
+
+    Since tables are pass-by-reference, we can modify the table anywhere and it will update all other instances. Therefore, we don't need a callback by default.
+    ```lua
+    local data = {
+        myNumber = 5
+    }
+
+    local state = Iris.TableState(data, "myNumber")
+    Iris.DragNum({ "My number" }, { number = state })
+    ```
+
+    Here the `data._started` should never be updated directly, only through the `toggle` function. However, we still want to monitor the value and be able to change it.
+    Therefore, we use the callback to toggle the function for us and prevent Iris from updating the table value by returning false.
+    ```lua
+    local data = {
+        _started = false
+    }
+
+    local function toggle(enabled: boolean)
+        data._started = enabled
+        if data._started then
+            start(...)
+        else
+            stop(...)
+        end
+    end
+
+    local state = Iris.TableState(data, "_started", function(stateValue: boolean)
+       toggle(stateValue)
+       return false
+    end)
+    Iris.Checkbox({ "Started" }, { isChecked = state })
+    ```
+
+    :::caution Caution: Update Order
+    If the table value and state value are different when calling this, the table value value takes precedence.
+
+    Therefore, if you update the state using `state.value = ...` then it will be overwritten by the table value.
+    You must use `state:set(...)` if you want the table value to update to the state's value.
+    :::
+]=]
+function Iris.TableState<K, V>(tab: { [K]: V }, key: K, callback: ((newValue: V) -> false?)?): Types.State<V>
+    local value: V = tab[key]
+    local ID: Types.ID = Internal._getID(2)
+    local state: Types.State<V>? = Internal._states[ID]
+
+    -- If the table values changes, then we update the state to match.
+    if state then
+        if value ~= state.value then
+            state:set(value)
+        end
+        return state
+    end
+
+    local newState = {
+        ID = ID,
+        value = value,
+        lastChangeTick = Iris.Internal._cycleTick,
+        ConnectedWidgets = {},
+        ConnectedFunctions = {},
+    } :: Types.State<V>
+    setmetatable(newState, Internal.StateClass)
+    Internal._states[ID] = newState
+
+    -- When a change happens to the state, we update the table value.
+    newState:onChange(function()
+        if callback ~= nil then
+            if callback(newState.value) then
+                tab[key] = newState.value
+            end
+        else
+            tab[key] = newState.value
+        end
+    end)
+    return newState
+end
+
+--[=[
+    @within Iris
+    @function ComputedState<T, U>
+    @param firstState State<T> -- State to bind to.
+    @param onChangeCallback (firstValue: T) -> U -- callback which should return a value transformed from the firstState value
+    @return State<U>
+
+    Constructs a new State object, but binds its value to the value of another State.
+    :::info
+    A common use case for this constructor is when a boolean State needs to be inverted:
+    ```lua
+    Iris.ComputedState(otherState, function(newValue)
+        return not newValue
+    end)
+    ```
+    :::
+]=]
+function Iris.ComputedState<T, U>(firstState: Types.State<T>, onChangeCallback: (firstValue: T) -> U): Types.State<U>
+    local ID: Types.ID = Internal._getID(2)
+
+    if Internal._states[ID] then
+        return Internal._states[ID]
+    else
+        Internal._states[ID] = {
+            ID = ID,
+            value = onChangeCallback(firstState.value),
+            lastChangeTick = Iris.Internal._cycleTick,
+            ConnectedWidgets = {},
+            ConnectedFunctions = {},
+        } :: Types.State<U>
+        firstState:onChange(function(newValue: T)
+            Internal._states[ID]:set(onChangeCallback(newValue))
+        end)
+        setmetatable(Internal._states[ID], Internal.StateClass)
+        return Internal._states[ID]
+    end
+end
+
+--[=[
+    @within Iris
+    @function ShowDemoWindow
+
+    ShowDemoWindow is a function which creates a Demonstration window. this window contains many useful utilities for coders,
+    and serves as a refrence for using each part of the library. Ideally, the DemoWindow should always be available in your UI.
+    It is the same as any other callback you would connect to Iris using [Iris.Connect]
+    ```lua
+    Iris:Connect(Iris.ShowDemoWindow)
+    ```
+]=]
+Iris.ShowDemoWindow = require(script.demoWindow)(Iris)
+
+require(script.widgets)(Internal)
+require(script.API)(Iris)
+
+return Iris

@@ -3,7 +3,7 @@
 	Manages the cleaning of events and other things. Useful for
 	encapsulating state and make deconstructors easy.
 
-	See the [Five Powerful Code Patterns talk](	)
+	See the [Five Powerful Code Patterns talk](https://developer.roblox.com/en-us/videos/5-powerful-code-patterns-behind-top-roblox-games)
 	for a more in-depth look at Maids in top games.
 
 	```lua
@@ -33,7 +33,7 @@ export type Maid = typeof(setmetatable(
 	{} :: {
 		Add: <T>(self: Maid, task: T) -> T,
 		GiveTask: (self: Maid, task: MaidTask) -> number,
-		GiveTasks: (self: Maid, tasks: { MaidTask }) -> { number },
+		GiveTasks: (self: Maid, tasks: {MaidTask}) -> {number},
 		GivePromise: <T>(self: Maid, promise: T) -> T,
 		DoCleaning: (self: Maid) -> (),
 		Destroy: (self: Maid) -> (),
@@ -41,7 +41,7 @@ export type Maid = typeof(setmetatable(
 		[string | number | MaidTask]: any,
 	},
 	{} :: typeof({ __index = Maid })
-))
+	))
 
 --[[
 	Constructs a new Maid object
@@ -215,13 +215,13 @@ end
 	@param tasks {MaidTask} -- A list of items to clean
 	@return {number} -- List of taskIds
 ]]
-function Maid.GiveTasks(self: Maid, tasks: { MaidTask }, ...): { number }
-	local hang = { ... }
-
+function Maid.GiveTasks(self: Maid, tasks: {MaidTask}, ...): {number}
+	local hang = {...}
+	
 	if #hang > 0 then
 		warn(`EXCESS HANG OF`, hang)
 	end
-
+	
 	if typeof(tasks) ~= "table" then
 		error("GiveTasks expects a table of tasks", 2)
 	end
@@ -232,7 +232,7 @@ function Maid.GiveTasks(self: Maid, tasks: { MaidTask }, ...): { number }
 		--if typeof(task) ~= "RBXScriptConnection" then
 		--	warn('TASK NOT CONNECTION', task)
 		--end
-
+		
 		table.insert(ids, self:GiveTask(task))
 	end
 
