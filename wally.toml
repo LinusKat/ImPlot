@@ -1,6 +1,9 @@
 [package]
-name = "LinusKat/implot"
-version = "0.1.0"
+name = "linuskat/iris-implot"
+description = "Fork of Iris which adds 2 new plotting widgets"
+license = "MIT"
+authors = ["LinusKat"]
+version = "1.0.1"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
