@@ -1,12 +1,6 @@
 {
   "name": "ImPlot",
   "tree": {
-    "$className": "DataModel",
-
-    "ReplicatedStorage": {
-      "Iris": {
-        "$path": "src"
-      }
-    }
+    "$path": "src/init.luau"
   }
 }
