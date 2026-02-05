@@ -1,6 +1,7 @@
 {
   "name": "ImPlot",
   "tree": {
+    "$className": "ModuleScript",
     "$path": "src/init.luau"
   }
 }
