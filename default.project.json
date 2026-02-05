@@ -1,7 +1,6 @@
 {
-  "name": "ImPlot",
+  "name": "iris-implot",
   "tree": {
-    "$className": "ModuleScript",
-    "$path": "src/init.luau"
+    "$path": "./src"
   }
 }

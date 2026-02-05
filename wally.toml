@@ -3,10 +3,9 @@ name = "linuskat/iris-implot"
 description = "Fork of Iris which adds 2 new plotting widgets"
 license = "MIT"
 authors = ["LinusKat"]
-version = "1.0.1"
+version = "1.0.4"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
-exclude = ["**"]
 include = ["src", "src/**", "wally.lock", "default.project.json", "LICENSE.txt", "README.md"]
 
 [dependencies]

@@ -24,7 +24,7 @@ This is a graphing widget addon based off [ImPlot](https://github.com/epezent/im
 Add: `"linuskat/iris-implot` as a dependancy.
 ```toml
 [dependencies]
-Iris = "linuskat/iris-implot@1.0.1"
+Iris = "linuskat/iris-implot@1.0.4"
 ```
 
 ### Pre-installed
